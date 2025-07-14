@@ -1,0 +1,3120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kit Monitor | Control de Inventarios</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/recharts/umd/Recharts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment/min/moment.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+  <style id="app-style">
+    /* Estilos personalizados */
+    :root {
+      --primary-color: #0f4c81;
+      --secondary-color: #ff6b35;
+      --success-color: #2ecc71;
+      --danger-color: #e74c3c;
+      --warning-color: #f39c12;
+      --info-color: #3498db;
+      --light-color: #f8f9fa;
+      --dark-color: #212529;
+    }
+    
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #f5f7fa;
+    }
+    
+    .sidebar {
+      background-color: var(--primary-color);
+      transition: all 0.3s ease;
+      width: 250px;
+    }
+    
+    .sidebar-collapsed {
+      width: 70px;
+    }
+    
+    .sidebar-collapsed .nav-text {
+      display: none;
+    }
+    
+    .content {
+      transition: all 0.3s ease;
+      margin-left: 250px;
+      width: calc(100% - 250px);
+    }
+    
+    .content-expanded {
+      margin-left: 70px;
+      width: calc(100% - 70px);
+    }
+    
+    .card {
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .metric-card {
+      border-left: 4px solid var(--primary-color);
+    }
+    
+    .plan-badge {
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    
+    .badge-on-plan {
+      background-color: rgba(46, 204, 113, 0.2);
+      color: var(--success-color);
+    }
+    
+    .badge-off-plan {
+      background-color: rgba(231, 76, 60, 0.2);
+      color: var(--danger-color);
+    }
+    
+    .form-control {
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+      padding: 0.5rem 0.75rem;
+      transition: border-color 0.15s ease-in-out;
+    }
+    
+    .form-control:focus {
+      border-color: var(--primary-color);
+      outline: 0;
+      box-shadow: 0 0 0 3px rgba(15, 76, 129, 0.2);
+    }
+    
+    .btn-primary {
+      background-color: var(--primary-color);
+      border-color: var(--primary-color);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background-color: #0d3d68;
+      border-color: #0d3d68;
+    }
+    
+    .btn-secondary {
+      background-color: var(--secondary-color);
+      border-color: var(--secondary-color);
+      color: white;
+    }
+    
+    .btn-secondary:hover {
+      background-color: #e45a2a;
+      border-color: #e45a2a;
+    }
+    
+    .toggle-button {
+      width: 50px;
+      height: 28px;
+      background-color: #ccc;
+      border-radius: 34px;
+      position: relative;
+      transition: background-color 0.2s;
+      cursor: pointer;
+    }
+    
+    .toggle-button.active {
+      background-color: var(--success-color);
+    }
+    
+    .toggle-slider {
+      position: absolute;
+      height: 20px;
+      width: 20px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      border-radius: 50%;
+      transition: 0.2s;
+    }
+    
+    .toggle-button.active .toggle-slider {
+      transform: translateX(22px);
+    }
+    
+    .notifications-panel {
+      position: fixed;
+      top: 70px;
+      right: -300px;
+      width: 300px;
+      height: auto;
+      max-height: 70vh;
+      background-color: white;
+      border-radius: 8px 0 0 8px;
+      box-shadow: -3px 0 10px rgba(0, 0, 0, 0.1);
+      transition: right 0.3s ease;
+      z-index: 1000;
+    }
+    
+    .notifications-panel.show {
+      right: 0;
+    }
+    
+    .notification-item {
+      border-bottom: 1px solid #eee;
+      padding: 12px;
+      transition: background-color 0.2s;
+    }
+    
+    .notification-item:hover {
+      background-color: #f8f9fa;
+    }
+    
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: -500px;
+      width: 500px;
+      height: 100vh;
+      background-color: white;
+      box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+      transition: right 0.3s ease;
+      z-index: 1050;
+      overflow-y: auto;
+    }
+    
+    .drawer.show {
+      right: 0;
+    }
+    
+    .drawer-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1040;
+      display: none;
+    }
+    
+    .drawer-backdrop.show {
+      display: block;
+    }
+    
+    .counter-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background-color: var(--danger-color);
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 0.7rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .tooltip {
+      position: relative;
+    }
+    
+    .tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+    
+    .tooltip-text {
+      visibility: hidden;
+      width: 120px;
+      background-color: black;
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 5px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -60px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 0.75rem;
+    }
+    
+    .tooltip-text::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: black transparent transparent transparent;
+    }
+    
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.05);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+    
+    .pulse-animation {
+      animation: pulse 2s infinite;
+    }
+    
+    /* Toast notifications */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+    }
+    
+    .toast {
+      margin-bottom: 10px;
+      min-width: 250px;
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .toast-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      border-top-left-radius: 4px;
+      border-top-right-radius: 4px;
+    }
+    
+    .toast-body {
+      padding: 1rem;
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.5s;
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Layout Principal -->
+  <div class="flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar h-full fixed left-0">
+      <div class="py-4 px-3 h-full flex flex-col">
+        <!-- Logo -->
+        <div class="flex items-center justify-between mb-8 px-2">
+          <div class="flex items-center">
+            <div class="text-white font-bold text-xl">
+              <i class="fas fa-box-open mr-2"></i>
+              <span class="nav-text">Kit Monitor</span>
+            </div>
+          </div>
+          <button id="toggleSidebar" class="text-white hover:bg-blue-800 rounded p-1">
+            <i class="fas fa-bars"></i>
+          </button>
+        </div>
+
+        <!-- Navegación -->
+        <nav class="flex-grow">
+          <ul class="space-y-2">
+            <li>
+              <a href="javascript:void(0)" id="dashboardLink" class="flex items-center text-white hover:bg-blue-800 rounded py-2 px-3">
+                <i class="fas fa-chart-line w-6 text-center"></i>
+                <span class="nav-text ml-3">Dashboard</span>
+              </a>
+            </li>
+            <li>
+              <a href="javascript:void(0)" id="planLink" class="flex items-center text-white hover:bg-blue-800 rounded py-2 px-3">
+                <i class="fas fa-calendar-alt w-6 text-center"></i>
+                <span class="nav-text ml-3">Planificador</span>
+              </a>
+            </li>
+            <li>
+              <a href="javascript:void(0)" id="produccionLink" class="flex items-center text-white hover:bg-blue-800 rounded py-2 px-3">
+                <i class="fas fa-truck-loading w-6 text-center"></i>
+                <span class="nav-text ml-3">Producción</span>
+              </a>
+            </li>
+            <li>
+              <a href="javascript:void(0)" id="bomLink" class="flex items-center text-white hover:bg-blue-800 rounded py-2 px-3">
+                <i class="fas fa-clipboard-list w-6 text-center"></i>
+                <span class="nav-text ml-3">BOM</span>
+              </a>
+            </li>
+            <li>
+              <a href="javascript:void(0)" id="npLink" class="flex items-center text-white hover:bg-blue-800 rounded py-2 px-3">
+                <i class="fas fa-hashtag w-6 text-center"></i>
+                <span class="nav-text ml-3">Número de Parte</span>
+              </a>
+            </li>
+            <li>
+              <a href="javascript:void(0)" id="metricasLink" class="flex items-center text-white hover:bg-blue-800 rounded py-2 px-3">
+                <i class="fas fa-tachometer-alt w-6 text-center"></i>
+                <span class="nav-text ml-3">Métricas</span>
+              </a>
+            </li>
+            <li>
+              <a href="javascript:void(0)" id="reportesLink" class="flex items-center text-white hover:bg-blue-800 rounded py-2 px-3">
+                <i class="fas fa-file-alt w-6 text-center"></i>
+                <span class="nav-text ml-3">Reportes</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <!-- Usuario -->
+        <div class="mt-auto border-t border-blue-800 pt-4">
+          <div class="flex items-center px-3 text-white">
+            <div class="w-8 h-8 rounded-full bg-blue-400 flex items-center justify-center">
+              <i class="fas fa-user"></i>
+            </div>
+            <div class="ml-3 nav-text">
+              <div class="font-medium">Admin Usuario</div>
+              <div class="text-xs text-blue-200">Planificador</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenido principal -->
+    <div id="content" class="content flex flex-col bg-gray-50 overflow-hidden">
+      <!-- Barra superior -->
+      <header class="bg-white shadow-sm z-10 flex h-16 items-center justify-between px-6">
+        <div class="flex items-center">
+          <h1 id="pageTitle" class="text-xl font-semibold text-gray-800">Dashboard</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+          <div class="relative">
+            <button id="notificationsButton" class="p-1 rounded-full text-gray-500 hover:bg-gray-100 focus:outline-none relative">
+              <i class="fas fa-bell text-lg"></i>
+              <span id="notificationCounter" class="counter-badge">2</span>
+            </button>
+          </div>
+          <div class="flex items-center border-l pl-4 border-gray-200">
+            <span class="text-gray-700 mr-2">v1.0</span>
+            <div class="relative">
+              <button class="flex items-center focus:outline-none">
+                <span class="hidden md:block text-sm text-gray-700">Admin</span>
+                <i class="fas fa-caret-down ml-1 text-gray-500"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Contenido de páginas dinámicas -->
+      <main class="flex-1 overflow-y-auto p-6" id="mainContent">
+        <!-- El contenido de las páginas se cargará dinámicamente aquí -->
+        
+        <!-- Dashboard (página inicial) -->
+        <div id="dashboardPage" class="animate__animated animate__fadeIn">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <!-- KPI Cards -->
+            <div class="bg-white rounded-lg shadow p-6 metric-card">
+              <div class="flex justify-between items-start">
+                <div>
+                  <h3 class="text-sm font-medium text-gray-500">Tiempo promedio de surtido</h3>
+                  <div class="mt-1 flex items-baseline">
+                    <p class="text-2xl font-semibold text-gray-900">42s</p>
+                    <p class="ml-2 text-sm font-medium text-green-600">
+                      <i class="fas fa-arrow-down mr-1"></i>
+                      <span>8.1%</span>
+                    </p>
+                  </div>
+                  <p class="mt-1 text-xs text-gray-500">vs. semana anterior</p>
+                </div>
+                <div class="bg-blue-100 p-2 rounded-lg">
+                  <i class="fas fa-clock text-blue-700"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6 metric-card" style="border-left-color: #f39c12;">
+              <div class="flex justify-between items-start">
+                <div>
+                  <h3 class="text-sm font-medium text-gray-500">Pulls totales hoy</h3>
+                  <div class="mt-1 flex items-baseline">
+                    <p class="text-2xl font-semibold text-gray-900">284</p>
+                    <p class="ml-2 text-sm font-medium text-green-600">
+                      <i class="fas fa-arrow-up mr-1"></i>
+                      <span>12.5%</span>
+                    </p>
+                  </div>
+                  <p class="mt-1 text-xs text-gray-500">vs. promedio diario</p>
+                </div>
+                <div class="bg-yellow-100 p-2 rounded-lg">
+                  <i class="fas fa-box text-yellow-700"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6 metric-card" style="border-left-color: #e74c3c;">
+              <div class="flex justify-between items-start">
+                <div>
+                  <h3 class="text-sm font-medium text-gray-500">Excepciones Off-Plan</h3>
+                  <div class="mt-1 flex items-baseline">
+                    <p class="text-2xl font-semibold text-gray-900">7</p>
+                    <p class="ml-2 text-sm font-medium text-red-600">
+                      <i class="fas fa-arrow-up mr-1"></i>
+                      <span>3</span>
+                    </p>
+                  </div>
+                  <p class="mt-1 text-xs text-gray-500">vs. ayer</p>
+                </div>
+                <div class="bg-red-100 p-2 rounded-lg">
+                  <i class="fas fa-exclamation-triangle text-red-700"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Gráfico principal -->
+            <div class="bg-white rounded-lg shadow p-6">
+              <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-medium text-gray-900">Surtidos por hora</h2>
+                <div class="flex items-center">
+                  <button class="text-sm text-gray-500 hover:text-gray-700 mr-2">Hoy</button>
+                  <button class="text-sm font-medium text-blue-600 mr-2">Semana</button>
+                  <button class="text-sm text-gray-500 hover:text-gray-700">Mes</button>
+                </div>
+              </div>
+              <div class="h-80">
+                <canvas id="pullsByHourChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Tabla de alertas recientes -->
+            <div class="bg-white rounded-lg shadow">
+              <div class="p-6 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                  <h2 class="text-lg font-medium text-gray-900">Alertas recientes</h2>
+                  <a href="javascript:void(0)" class="text-sm font-medium text-blue-600 hover:text-blue-800">
+                    Ver todas
+                  </a>
+                </div>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Modelo
+                      </th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Evento
+                      </th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Hora
+                      </th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Estado
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <tr>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        MX-345-1082B
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        Off-Plan
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        Hace 14 min
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                          Pendiente
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        MX-128-9876A
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        Off-Plan
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        Hace 1h 22m
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          Resuelto
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        MX-201-4567C
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        SMED excedido
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        Hace 3h 45m
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                          Pendiente
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Cumplimiento SMED -->
+            <div class="bg-white rounded-lg shadow p-6">
+              <h2 class="text-lg font-medium text-gray-900 mb-4">Cumplimiento SMED</h2>
+              <div class="flex items-center justify-center h-64">
+                <canvas id="smedComplianceChart"></canvas>
+              </div>
+              <div class="mt-4 text-center">
+                <span class="text-sm font-medium text-gray-500">Objetivo: 40 segundos</span>
+              </div>
+            </div>
+
+            <!-- Peso acumulado -->
+            <div class="bg-white rounded-lg shadow p-6">
+              <h2 class="text-lg font-medium text-gray-900 mb-4">Peso acumulado (kg)</h2>
+              <div class="h-64">
+                <canvas id="weightChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Top 5 modelos -->
+            <div class="bg-white rounded-lg shadow">
+              <div class="p-6 border-b border-gray-200">
+                <h2 class="text-lg font-medium text-gray-900">Top 5 Modelos</h2>
+                <p class="text-sm text-gray-500">Por número de surtidos</p>
+              </div>
+              <div class="p-6">
+                <div class="space-y-4">
+                  <div>
+                    <div class="flex justify-between mb-1">
+                      <span class="text-sm font-medium text-gray-700">MX-345-1082B</span>
+                      <span class="text-sm text-gray-600">85 pulls</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                      <div class="bg-blue-600 h-2 rounded-full" style="width: 85%"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between mb-1">
+                      <span class="text-sm font-medium text-gray-700">MX-128-9876A</span>
+                      <span class="text-sm text-gray-600">62 pulls</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                      <div class="bg-blue-600 h-2 rounded-full" style="width: 62%"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between mb-1">
+                      <span class="text-sm font-medium text-gray-700">MX-201-4567C</span>
+                      <span class="text-sm text-gray-600">48 pulls</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                      <div class="bg-blue-600 h-2 rounded-full" style="width: 48%"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between mb-1">
+                      <span class="text-sm font-medium text-gray-700">MX-467-2301D</span>
+                      <span class="text-sm text-gray-600">36 pulls</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                      <div class="bg-blue-600 h-2 rounded-full" style="width: 36%"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between mb-1">
+                      <span class="text-sm font-medium text-gray-700">MX-715-3890E</span>
+                      <span class="text-sm text-gray-600">29 pulls</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                      <div class="bg-blue-600 h-2 rounded-full" style="width: 29%"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Planificador Page -->
+        <div id="planPage" class="hidden animate__animated">
+          <div class="mb-6 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-800">Planificador de Producción</h1>
+            <button id="newPlanBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center">
+              <i class="fas fa-plus mr-2"></i> Crear Nuevo Plan
+            </button>
+          </div>
+          
+          <div class="bg-white rounded-lg shadow mb-6">
+            <div class="p-6">
+              <h2 class="text-lg font-medium text-gray-900 mb-4">Plan de Producción Activo</h2>
+              <div class="flex items-center justify-between mb-6">
+                <div>
+                  <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">Activo</span>
+                  <span class="ml-2 text-sm text-gray-500">Versión 2.3</span>
+                </div>
+                <div class="text-sm text-gray-500">Vigencia: 15/May/2025 - 30/Jun/2025</div>
+              </div>
+              
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-500">
+                  <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                    <tr>
+                      <th scope="col" class="px-6 py-3">Modelo</th>
+                      <th scope="col" class="px-6 py-3">Número de Parte</th>
+                      <th scope="col" class="px-6 py-3">Objetivo SMED (s)</th>
+                      <th scope="col" class="px-6 py-3">Objetivo Diario</th>
+                      <th scope="col" class="px-6 py-3">Objetivo Semanal</th>
+                      <th scope="col" class="px-6 py-3">Objetivo Mensual</th>
+                      <th scope="col" class="px-6 py-3">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="bg-white border-b">
+                      <td class="px-6 py-4 font-medium text-gray-900">Motor Principal V8</td>
+                      <td class="px-6 py-4">MX-345-1082B</td>
+                      <td class="px-6 py-4">45</td>
+                      <td class="px-6 py-4">120</td>
+                      <td class="px-6 py-4">600</td>
+                      <td class="px-6 py-4">2400</td>
+                      <td class="px-6 py-4">
+                        <button class="text-blue-600 hover:text-blue-900 mr-3">
+                          <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="text-gray-600 hover:text-gray-900">
+                          <i class="fas fa-history"></i>
+                        </button>
+                      </td>
+                    </tr>
+                    <tr class="bg-white border-b">
+                      <td class="px-6 py-4 font-medium text-gray-900">Transmisión Automática</td>
+                      <td class="px-6 py-4">MX-128-9876A</td>
+                      <td class="px-6 py-4">60</td>
+                      <td class="px-6 py-4">80</td>
+                      <td class="px-6 py-4">400</td>
+                      <td class="px-6 py-4">1600</td>
+                      <td class="px-6 py-4">
+                        <button class="text-blue-600 hover:text-blue-900 mr-3">
+                          <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="text-gray-600 hover:text-gray-900">
+                          <i class="fas fa-history"></i>
+                        </button>
+                      </td>
+                    </tr>
+                    <tr class="bg-white border-b">
+                      <td class="px-6 py-4 font-medium text-gray-900">Sistema de Frenos</td>
+                      <td class="px-6 py-4">MX-201-4567C</td>
+                      <td class="px-6 py-4">30</td>
+                      <td class="px-6 py-4">150</td>
+                      <td class="px-6 py-4">750</td>
+                      <td class="px-6 py-4">3000</td>
+                      <td class="px-6 py-4">
+                        <button class="text-blue-600 hover:text-blue-900 mr-3">
+                          <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="text-gray-600 hover:text-gray-900">
+                          <i class="fas fa-history"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white rounded-lg shadow">
+              <div class="p-6 border-b border-gray-200">
+                <h2 class="text-lg font-medium text-gray-900">Versiones Anteriores</h2>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-500">
+                  <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                    <tr>
+                      <th scope="col" class="px-6 py-3">Versión</th>
+                      <th scope="col" class="px-6 py-3">Vigencia</th>
+                      <th scope="col" class="px-6 py-3">Modelos</th>
+                      <th scope="col" class="px-6 py-3">Creado por</th>
+                      <th scope="col" class="px-6 py-3">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="bg-white border-b">
+                      <td class="px-6 py-4">2.2</td>
+                      <td class="px-6 py-4">01/Mar/2025 - 14/May/2025</td>
+                      <td class="px-6 py-4">4</td>
+                      <td class="px-6 py-4">Maria Lopez</td>
+                      <td class="px-6 py-4">
+                        <button class="text-blue-600 hover:text-blue-900">
+                          <i class="fas fa-eye"></i>
+                        </button>
+                      </td>
+                    </tr>
+                    <tr class="bg-white border-b">
+                      <td class="px-6 py-4">2.1</td>
+                      <td class="px-6 py-4">01/Jan/2025 - 28/Feb/2025</td>
+                      <td class="px-6 py-4">4</td>
+                      <td class="px-6 py-4">Carlos Rodriguez</td>
+                      <td class="px-6 py-4">
+                        <button class="text-blue-600 hover:text-blue-900">
+                          <i class="fas fa-eye"></i>
+                        </button>
+                      </td>
+                    </tr>
+                    <tr class="bg-white border-b">
+                      <td class="px-6 py-4">2.0</td>
+                      <td class="px-6 py-4">01/Oct/2024 - 31/Dec/2024</td>
+                      <td class="px-6 py-4">3</td>
+                      <td class="px-6 py-4">Carlos Rodriguez</td>
+                      <td class="px-6 py-4">
+                        <button class="text-blue-600 hover:text-blue-900">
+                          <i class="fas fa-eye"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow">
+              <div class="p-6 border-b border-gray-200">
+                <h2 class="text-lg font-medium text-gray-900">Comparativa de Cambios</h2>
+              </div>
+              <div class="p-6">
+                <div class="mb-4">
+                  <label for="versionCompare" class="block text-sm font-medium text-gray-700">Seleccionar versión para comparar</label>
+                  <div class="flex mt-1">
+                    <select id="versionCompare" class="form-control flex-1">
+                      <option value="2.2">Versión 2.2</option>
+                      <option value="2.1">Versión 2.1</option>
+                      <option value="2.0">Versión 2.0</option>
+                    </select>
+                    <button class="ml-2 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md">Comparar</button>
+                  </div>
+                </div>
+                <div class="space-y-4">
+                  <div class="p-4 bg-green-50 border-l-4 border-green-400">
+                    <div class="flex">
+                      <div class="flex-shrink-0">
+                        <i class="fas fa-plus-circle text-green-400"></i>
+                      </div>
+                      <div class="ml-3">
+                        <p class="text-sm text-green-700">Añadido nuevo modelo "Sistema de Refrigeración" (MX-467-2301D)</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400">
+                    <div class="flex">
+                      <div class="flex-shrink-0">
+                        <i class="fas fa-edit text-yellow-400"></i>
+                      </div>
+                      <div class="ml-3">
+                        <p class="text-sm text-yellow-700">Objetivo SMED modificado para "Motor Principal V8": 50s → 45s</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400">
+                    <div class="flex">
+                      <div class="flex-shrink-0">
+                        <i class="fas fa-edit text-yellow-400"></i>
+                      </div>
+                      <div class="ml-3">
+                        <p class="text-sm text-yellow-700">Incremento de objetivo diario para "Transmisión Automática": 70 → 80</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal para Crear Nuevo Plan -->
+          <div id="newPlanModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-screen overflow-y-auto">
+              <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                  <h2 class="text-xl font-semibold text-gray-800">Crear Nuevo Plan de Producción</h2>
+                  <button id="closePlanModal" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="p-6">
+                <form id="planForm">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <label for="planVersion" class="block text-sm font-medium text-gray-700 mb-1">Versión del Plan</label>
+                      <input type="text" id="planVersion" name="planVersion" value="2.4" class="form-control" readonly>
+                    </div>
+                    <div>
+                      <label for="planName" class="block text-sm font-medium text-gray-700 mb-1">Nombre del Plan</label>
+                      <input type="text" id="planName" name="planName" class="form-control" placeholder="Plan de Producción Q3 2025">
+                    </div>
+                    <div>
+                      <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio</label>
+                      <input type="text" id="startDate" name="startDate" class="form-control" placeholder="Seleccionar fecha">
+                    </div>
+                    <div>
+                      <label for="endDate" class="block text-sm font-medium text-gray-700 mb-1">Fecha de Fin</label>
+                      <input type="text" id="endDate" name="endDate" class="form-control" placeholder="Seleccionar fecha">
+                    </div>
+                  </div>
+                  
+                  <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Modelos en el Plan</label>
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                      <div class="grid grid-cols-8 gap-4 mb-2 text-sm font-medium text-gray-700">
+                        <div class="col-span-2">Modelo</div>
+                        <div>Número de Parte</div>
+                        <div>SMED (s)</div>
+                        <div>Obj. Diario</div>
+                        <div>Obj. Semanal</div>
+                        <div>Obj. Mensual</div>
+                        <div></div>
+                      </div>
+                      
+                      <!-- Modelo 1 -->
+                      <div class="grid grid-cols-8 gap-4 mb-2 items-center">
+                        <div class="col-span-2">
+                          <input type="text" class="form-control" value="Motor Principal V8" placeholder="Nombre del modelo">
+                        </div>
+                        <div>
+                          <input type="text" class="form-control" value="MX-345-1082B" placeholder="NP-XXX-XXXX">
+                        </div>
+                        <div>
+                          <input type="number" class="form-control" value="45" placeholder="45">
+                        </div>
+                        <div>
+                          <input type="number" class="form-control" value="120" placeholder="120">
+                        </div>
+                        <div>
+                          <input type="number" class="form-control" value="600" placeholder="600">
+                        </div>
+                        <div>
+                          <input type="number" class="form-control" value="2400" placeholder="2400">
+                        </div>
+                        <div>
+                          <button type="button" class="text-red-600 hover:text-red-800">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <!-- Modelo 2 -->
+                      <div class="grid grid-cols-8 gap-4 mb-2 items-center">
+                        <div class="col-span-2">
+                          <input type="text" class="form-control" value="Transmisión Automática" placeholder="Nombre del modelo">
+                        </div>
+                        <div>
+                          <input type="text" class="form-control" value="MX-128-9876A" placeholder="NP-XXX-XXXX">
+                        </div>
+                        <div>
+                          <input type="number" class="form-control" value="60" placeholder="60">
+                        </div>
+                        <div>
+                          <input type="number" class="form-control" value="80" placeholder="80">
+                        </div>
+                        <div>
+                          <input type="number" class="form-control" value="400" placeholder="400">
+                        </div>
+                        <div>
+                          <input type="number" class="form-control" value="1600" placeholder="1600">
+                        </div>
+                        <div>
+                          <button type="button" class="text-red-600 hover:text-red-800">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <!-- Modelo 3 -->
+                      <div class="grid grid-cols-8 gap-4 items-center">
+                        <div class="col-span-2">
+                          <input type="text" class="form-control" value="Sistema de Frenos" placeholder="Nombre del modelo">
+                        </div>
+                        <div>
+                          <input type="text" class="form-control" value="MX-201-4567C" placeholder="NP-XXX-XXXX">
+                        </div>
+                        <div>
+                          <input type="number" class="form-control" value="30" placeholder="30">
+                        </div>
+                        <div>
+                          <input type="number" class="form-control" value="150" placeholder="150">
+                        </div>
+                        <div>
+                          <input type="number" class="form-control" value="750" placeholder="750">
+                        </div>
+                        <div>
+                          <input type="number" class="form-control" value="3000" placeholder="3000">
+                        </div>
+                        <div>
+                          <button type="button" class="text-red-600 hover:text-red-800">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <button type="button" class="flex items-center text-blue-600 hover:text-blue-800">
+                      <i class="fas fa-plus mr-1"></i> Añadir Modelo
+                    </button>
+                  </div>
+                  
+                  <div class="flex justify-end space-x-3">
+                    <button type="button" id="cancelPlanBtn" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
+                      Cancelar
+                    </button>
+                    <button type="button" id="savePlanBtn" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+                      Guardar y Publicar Plan
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Producción Page -->
+        <div id="produccionPage" class="hidden animate__animated">
+          <div class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">Registro de Surtido</h1>
+            <p class="text-gray-600 mt-1">Registre el surtido de materiales para los modelos en producción</p>
+          </div>
+          
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Formulario de Registro -->
+            <div class="col-span-1">
+              <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Nuevo Registro</h2>
+                
+                <form id="surtidoForm" class="space-y-4">
+                  <div>
+                    <label for="modelSelect" class="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
+                    <select id="modelSelect" class="form-control">
+                      <option value="">Seleccionar modelo...</option>
+                      <option value="MX-345-1082B">Motor Principal V8 (MX-345-1082B)</option>
+                      <option value="MX-128-9876A">Transmisión Automática (MX-128-9876A)</option>
+                      <option value="MX-201-4567C">Sistema de Frenos (MX-201-4567C)</option>
+                      <option value="MX-467-2301D">Sistema de Refrigeración (MX-467-2301D)</option>
+                      <option value="MX-503-7654B">Sistema Eléctrico (MX-503-7654B)</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label for="pullsCount" class="block text-sm font-medium text-gray-700 mb-1">Número de Pulls</label>
+                    <input type="number" id="pullsCount" class="form-control" placeholder="Ej. 5" min="1">
+                  </div>
+                  
+                  <div>
+                    <label for="weightKg" class="block text-sm font-medium text-gray-700 mb-1">Peso (kg)</label>
+                    <input type="number" id="weightKg" class="form-control" placeholder="Ej. 12.5" step="0.1" min="0">
+                  </div>
+                  
+                  <div>
+                    <label for="duration" class="block text-sm font-medium text-gray-700 mb-1">Duración (segundos)</label>
+                    <input type="number" id="duration" class="form-control" placeholder="Dejar en blanco para auto-cálculo" min="0">
+                    <p class="text-xs text-gray-500 mt-1">Opcional. Si no se ingresa, se calculará automáticamente.</p>
+                  </div>
+                  
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cronómetro</label>
+                    <div class="flex items-center space-x-2">
+                      <div id="timerDisplay" class="text-xl font-mono">00:00.0</div>
+                      <button type="button" id="timerStartBtn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none">
+                        <i class="fas fa-play"></i>
+                      </button>
+                      <button type="button" id="timerStopBtn" class="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none" disabled>
+                        <i class="fas fa-stop"></i>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div class="pt-4">
+                    <button type="button" id="submitSurtidoBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md">
+                      Registrar Surtido
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+            
+            <!-- Panel de estado -->
+            <div class="col-span-1 lg:col-span-2">
+              <div class="bg-white rounded-lg shadow mb-6">
+                <div class="p-6">
+                  <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-medium text-gray-900">Estado del Plan</h2>
+                    <span class="badge-on-plan plan-badge">En Plan</span>
+                  </div>
+                  
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                      <div class="text-sm text-gray-500 mb-1">Avance diario vs objetivo</div>
+                      <div class="flex items-end">
+                        <span class="text-2xl font-bold text-gray-900 mr-2">68%</span>
+                        <span class="text-sm text-gray-600">(347 de 510)</span>
+                      </div>
+                      <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div class="bg-blue-600 h-2 rounded-full" style="width: 68%"></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div class="text-sm text-gray-500 mb-1">Tiempo promedio de surtido</div>
+                      <div class="flex items-end">
+                        <span class="text-2xl font-bold text-gray-900 mr-2">42s</span>
+                        <span class="text-sm text-green-600">(8% mejor que objetivo)</span>
+                      </div>
+                      <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div class="bg-green-600 h-2 rounded-full" style="width: 92%"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Dashboard de excepciones -->
+              <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b border-gray-200">
+                  <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-medium text-gray-900">Excepciones Off-Plan</h2>
+                    <div>
+                      <select id="exceptionsTimeRange" class="form-control py-1 px-2 text-sm">
+                        <option value="day">Hoy</option>
+                        <option value="week">Esta semana</option>
+                        <option value="month">Este mes</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="p-6">
+                  <div class="mb-6">
+                    <canvas id="exceptionsChart" height="200"></canvas>
+                  </div>
+                  
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-500">
+                      <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                          <th scope="col" class="px-6 py-3">Modelo</th>
+                          <th scope="col" class="px-6 py-3">Timestamp</th>
+                          <th scope="col" class="px-6 py-3">Operador</th>
+                          <th scope="col" class="px-6 py-3">Duración</th>
+                          <th scope="col" class="px-6 py-3">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr class="bg-white border-b">
+                          <td class="px-6 py-4 font-medium text-gray-900">MX-503-7654B</td>
+                          <td class="px-6 py-4">Hoy 14:32</td>
+                          <td class="px-6 py-4">Jorge Díaz</td>
+                          <td class="px-6 py-4">64s</td>
+                          <td class="px-6 py-4">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                              Pendiente
+                            </span>
+                          </td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                          <td class="px-6 py-4 font-medium text-gray-900">MX-715-3890E</td>
+                          <td class="px-6 py-4">Hoy 11:15</td>
+                          <td class="px-6 py-4">Ana Gómez</td>
+                          <td class="px-6 py-4">35s</td>
+                          <td class="px-6 py-4">
+                            <div class="toggle-button active" data-id="alert-2">
+                              <div class="toggle-slider"></div>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                          <td class="px-6 py-4 font-medium text-gray-900">MX-503-7654B</td>
+                          <td class="px-6 py-4">Ayer 16:48</td>
+                          <td class="px-6 py-4">Roberto Sánchez</td>
+                          <td class="px-6 py-4">58s</td>
+                          <td class="px-6 py-4">
+                            <div class="toggle-button active" data-id="alert-3">
+                              <div class="toggle-slider"></div>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal para alerta Off-Plan -->
+          <div id="offPlanAlertModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md animate__animated animate__fadeInDown">
+              <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                  <h2 class="text-xl font-semibold text-red-600">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Alerta: Modelo fuera de plan
+                  </h2>
+                  <button id="closeAlertModal" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="p-6">
+                <div class="mb-6">
+                  <p class="text-gray-700">El modelo seleccionado <strong id="alertModelName">Sistema Eléctrico (MX-503-7654B)</strong> no está incluido en el plan de producción activo.</p>
+                  <p class="text-gray-700 mt-3">Esta excepción será registrada y notificada al planificador.</p>
+                </div>
+                
+                <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Añadir justificación (opcional)</label>
+                  <textarea id="alertJustification" rows="3" class="form-control w-full" placeholder="Explique el motivo de esta excepción..."></textarea>
+                </div>
+                
+                <div class="flex justify-end">
+                  <button id="proceedBtn" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none">
+                    Proceder de todos modos
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BOM Page -->
+        <div id="bomPage" class="hidden animate__animated">
+          <div class="mb-6 flex justify-between items-center">
+            <div>
+              <h1 class="text-2xl font-bold text-gray-800">Bill of Materials (BOM)</h1>
+              <p class="text-gray-600 mt-1">Gestione los componentes de cada modelo</p>
+            </div>
+            <button id="newBomBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center">
+              <i class="fas fa-plus mr-2"></i> Crear Nuevo BOM
+            </button>
+          </div>
+          
+          <div class="bg-white rounded-lg shadow mb-6">
+            <div class="p-6 border-b border-gray-200">
+              <div class="flex items-center justify-between">
+                <h2 class="text-lg font-medium text-gray-900">Modelos Disponibles</h2>
+                <div>
+                  <input type="text" placeholder="Buscar modelo..." class="form-control py-1 px-3 text-sm">
+                </div>
+              </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm text-left text-gray-500">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                  <tr>
+                    <th scope="col" class="px-6 py-3">Modelo</th>
+                    <th scope="col" class="px-6 py-3">Número de Parte</th>
+                    <th scope="col" class="px-6 py-3">Componentes</th>
+                    <th scope="col" class="px-6 py-3">Última Actualización</th>
+                    <th scope="col" class="px-6 py-3">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="bg-white border-b">
+                    <td class="px-6 py-4 font-medium text-gray-900">Motor Principal V8</td>
+                    <td class="px-6 py-4">MX-345-1082B</td>
+                    <td class="px-6 py-4">24</td>
+                    <td class="px-6 py-4">15/04/2025</td>
+                    <td class="px-6 py-4">
+                      <button class="text-blue-600 hover:text-blue-900 mr-3" data-model="MX-345-1082B">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button class="text-blue-600 hover:text-blue-900 expandBom" data-model="MX-345-1082B">
+                        <i class="fas fa-expand-alt"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr class="bg-white border-b">
+                    <td class="px-6 py-4 font-medium text-gray-900">Transmisión Automática</td>
+                    <td class="px-6 py-4">MX-128-9876A</td>
+                    <td class="px-6 py-4">18</td>
+                    <td class="px-6 py-4">10/04/2025</td>
+                    <td class="px-6 py-4">
+                      <button class="text-blue-600 hover:text-blue-900 mr-3" data-model="MX-128-9876A">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button class="text-blue-600 hover:text-blue-900 expandBom" data-model="MX-128-9876A">
+                        <i class="fas fa-expand-alt"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr class="bg-white border-b">
+                    <td class="px-6 py-4 font-medium text-gray-900">Sistema de Frenos</td>
+                    <td class="px-6 py-4">MX-201-4567C</td>
+                    <td class="px-6 py-4">12</td>
+                    <td class="px-6 py-4">05/04/2025</td>
+                    <td class="px-6 py-4">
+                      <button class="text-blue-600 hover:text-blue-900 mr-3" data-model="MX-201-4567C">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button class="text-blue-600 hover:text-blue-900 expandBom" data-model="MX-201-4567C">
+                        <i class="fas fa-expand-alt"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr class="bg-white border-b">
+                    <td class="px-6 py-4 font-medium text-gray-900">Sistema de Refrigeración</td>
+                    <td class="px-6 py-4">MX-467-2301D</td>
+                    <td class="px-6 py-4">16</td>
+                    <td class="px-6 py-4">01/04/2025</td>
+                    <td class="px-6 py-4">
+                      <button class="text-blue-600 hover:text-blue-900 mr-3" data-model="MX-467-2301D">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button class="text-blue-600 hover:text-blue-900 expandBom" data-model="MX-467-2301D">
+                        <i class="fas fa-expand-alt"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr class="bg-white">
+                    <td class="px-6 py-4 font-medium text-gray-900">Sistema Eléctrico</td>
+                    <td class="px-6 py-4">MX-503-7654B</td>
+                    <td class="px-6 py-4">20</td>
+                    <td class="px-6 py-4">28/03/2025</td>
+                    <td class="px-6 py-4">
+                      <button class="text-blue-600 hover:text-blue-900 mr-3" data-model="MX-503-7654B">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button class="text-blue-600 hover:text-blue-900 expandBom" data-model="MX-503-7654B">
+                        <i class="fas fa-expand-alt"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Modal para nuevo BOM -->
+          <div id="bomModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-screen overflow-y-auto">
+              <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                  <h2 class="text-xl font-semibold text-gray-800">Gestionar Bill of Materials</h2>
+                  <button id="closeBomModal" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="p-6">
+                <form id="bomForm">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <label for="modelName" class="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
+                      <input type="text" id="modelName" class="form-control" placeholder="Nombre del modelo">
+                    </div>
+                    <div>
+                      <label for="modelNP" class="block text-sm font-medium text-gray-700 mb-1">Número de Parte</label>
+                      <input type="text" id="modelNP" class="form-control" placeholder="Formato: XX-000-0000X">
+                    </div>
+                  </div>
+                  
+                  <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Componentes</label>
+                    <div class="overflow-x-auto bg-gray-50 rounded-lg p-4">
+                      <table class="w-full text-sm text-left">
+                        <thead>
+                          <tr class="text-xs font-medium text-gray-700 uppercase">
+                            <th class="px-4 py-2 w-20">ID</th>
+                            <th class="px-4 py-2">Descripción</th>
+                            <th class="px-4 py-2 w-20">Cantidad</th>
+                            <th class="px-4 py-2 w-28">Unidad</th>
+                            <th class="px-4 py-2">Proveedor</th>
+                            <th class="px-4 py-2 w-16">Acción</th>
+                          </tr>
+                        </thead>
+                        <tbody id="componentsList">
+                          <!-- Componente 1 -->
+                          <tr>
+                            <td class="px-4 py-2">
+                              <input type="text" class="form-control" placeholder="ID">
+                            </td>
+                            <td class="px-4 py-2">
+                              <input type="text" class="form-control" placeholder="Descripción del componente">
+                            </td>
+                            <td class="px-4 py-2">
+                              <input type="number" class="form-control" placeholder="Cant." min="1">
+                            </td>
+                            <td class="px-4 py-2">
+                              <select class="form-control">
+                                <option value="pza">pza</option>
+                                <option value="kg">kg</option>
+                                <option value="m">m</option>
+                                <option value="l">l</option>
+                              </select>
+                            </td>
+                            <td class="px-4 py-2">
+                              <input type="text" class="form-control" placeholder="Proveedor (opcional)">
+                            </td>
+                            <td class="px-4 py-2 text-center">
+                              <button type="button" class="text-red-600 hover:text-red-800">
+                                <i class="fas fa-trash"></i>
+                              </button>
+                            </td>
+                          </tr>
+                          
+                          <!-- Componente 2 -->
+                          <tr>
+                            <td class="px-4 py-2">
+                              <input type="text" class="form-control" placeholder="ID">
+                            </td>
+                            <td class="px-4 py-2">
+                              <input type="text" class="form-control" placeholder="Descripción del componente">
+                            </td>
+                            <td class="px-4 py-2">
+                              <input type="number" class="form-control" placeholder="Cant." min="1">
+                            </td>
+                            <td class="px-4 py-2">
+                              <select class="form-control">
+                                <option value="pza">pza</option>
+                                <option value="kg">kg</option>
+                                <option value="m">m</option>
+                                <option value="l">l</option>
+                              </select>
+                            </td>
+                            <td class="px-4 py-2">
+                              <input type="text" class="form-control" placeholder="Proveedor (opcional)">
+                            </td>
+                            <td class="px-4 py-2 text-center">
+                              <button type="button" class="text-red-600 hover:text-red-800">
+                                <i class="fas fa-trash"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    <button type="button" id="addComponentBtn" class="mt-3 flex items-center text-blue-600 hover:text-blue-800">
+                      <i class="fas fa-plus mr-1"></i> Añadir Componente
+                    </button>
+                  </div>
+                  
+                  <div class="flex justify-end space-x-3">
+                    <button type="button" id="cancelBomBtn" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
+                      Cancelar
+                    </button>
+                    <button type="button" id="saveBomBtn" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+                      Guardar BOM
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Drawer para expandir BOM -->
+          <div id="bomDrawer" class="drawer">
+            <div class="p-6 border-b border-gray-200">
+              <div class="flex items-center justify-between">
+                <h2 class="text-xl font-semibold text-gray-800" id="bomDrawerTitle">Componentes de [Modelo]</h2>
+                <button id="closeBomDrawer" class="text-gray-400 hover:text-gray-500">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            
+            <div class="p-6">
+              <div class="mb-6 bg-gray-50 p-4 rounded-lg">
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <span class="text-sm text-gray-500">Modelo:</span>
+                    <p class="font-medium text-gray-900" id="drawerModelName">Motor Principal V8</p>
+                  </div>
+                  <div>
+                    <span class="text-sm text-gray-500">Número de Parte:</span>
+                    <p class="font-medium text-gray-900" id="drawerModelNP">MX-345-1082B</p>
+                  </div>
+                  <div>
+                    <span class="text-sm text-gray-500">Total de Componentes:</span>
+                    <p class="font-medium text-gray-900" id="drawerComponentCount">24</p>
+                  </div>
+                  <div>
+                    <span class="text-sm text-gray-500">Última Actualización:</span>
+                    <p class="font-medium text-gray-900" id="drawerLastUpdate">15/04/2025</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="mb-4">
+                <input type="text" id="drawerSearchComponent" class="form-control" placeholder="Buscar componente...">
+              </div>
+              
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-500">
+                  <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                    <tr>
+                      <th scope="col" class="px-6 py-3">ID</th>
+                      <th scope="col" class="px-6 py-3">Descripción</th>
+                      <th scope="col" class="px-6 py-3">Cantidad</th>
+                      <th scope="col" class="px-6 py-3">Unidad</th>
+                      <th scope="col" class="px-6 py-3">Proveedor</th>
+                    </tr>
+                  </thead>
+                  <tbody id="drawerComponentList">
+                    <!-- Los componentes se cargarán dinámicamente -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div id="bomDrawerBackdrop" class="drawer-backdrop"></div>
+        </div>
+
+        <!-- Número de Parte Page -->
+        <div id="npPage" class="hidden animate__animated">
+          <div class="mb-6 flex justify-between items-center">
+            <div>
+              <h1 class="text-2xl font-bold text-gray-800">Gestión de Número de Parte</h1>
+              <p class="text-gray-600 mt-1">Administre los números de parte asociados a cada modelo</p>
+            </div>
+            <button id="newNpBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center">
+              <i class="fas fa-plus mr-2"></i> Crear Nuevo NP
+            </button>
+          </div>
+          
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Gestión de NP -->
+            <div class="col-span-1 lg:col-span-2">
+              <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b border-gray-200">
+                  <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-medium text-gray-900">Números de Parte Registrados</h2>
+                    <div>
+                      <input type="text" id="searchNP" placeholder="Buscar NP..." class="form-control py-1 px-3 text-sm">
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm text-left text-gray-500">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                      <tr>
+                        <th scope="col" class="px-6 py-3">Número de Parte</th>
+                        <th scope="col" class="px-6 py-3">Modelo</th>
+                        <th scope="col" class="px-6 py-3">Descripción</th>
+                        <th scope="col" class="px-6 py-3">Estado</th>
+                        <th scope="col" class="px-6 py-3">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="bg-white border-b">
+                        <td class="px-6 py-4 font-medium text-gray-900">MX-345-1082B</td>
+                        <td class="px-6 py-4">Motor Principal V8</td>
+                        <td class="px-6 py-4">Motor de 8 cilindros para vehículos de alta potencia</td>
+                        <td class="px-6 py-4">
+                          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            Activo
+                          </span>
+                        </td>
+                        <td class="px-6 py-4">
+                          <button class="text-blue-600 hover:text-blue-900 mr-2">
+                            <i class="fas fa-edit"></i>
+                          </button>
+                          <button class="text-red-600 hover:text-red-900">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </td>
+                      </tr>
+                      <tr class="bg-white border-b">
+                        <td class="px-6 py-4 font-medium text-gray-900">MX-128-9876A</td>
+                        <td class="px-6 py-4">Transmisión Automática</td>
+                        <td class="px-6 py-4">Transmisión de 6 velocidades para SUVs</td>
+                        <td class="px-6 py-4">
+                          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            Activo
+                          </span>
+                        </td>
+                        <td class="px-6 py-4">
+                          <button class="text-blue-600 hover:text-blue-900 mr-2">
+                            <i class="fas fa-edit"></i>
+                          </button>
+                          <button class="text-red-600 hover:text-red-900">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </td>
+                      </tr>
+                      <tr class="bg-white border-b">
+                        <td class="px-6 py-4 font-medium text-gray-900">MX-201-4567C</td>
+                        <td class="px-6 py-4">Sistema de Frenos</td>
+                        <td class="px-6 py-4">Sistema de frenos ABS para camionetas</td>
+                        <td class="px-6 py-4">
+                          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            Activo
+                          </span>
+                        </td>
+                        <td class="px-6 py-4">
+                          <button class="text-blue-600 hover:text-blue-900 mr-2">
+                            <i class="fas fa-edit"></i>
+                          </button>
+                          <button class="text-red-600 hover:text-red-900">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </td>
+                      </tr>
+                      <tr class="bg-white border-b">
+                        <td class="px-6 py-4 font-medium text-gray-900">MX-467-2301D</td>
+                        <td class="px-6 py-4">Sistema de Refrigeración</td>
+                        <td class="px-6 py-4">Sistema de enfriamiento de alta eficiencia</td>
+                        <td class="px-6 py-4">
+                          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            Activo
+                          </span>
+                        </td>
+                        <td class="px-6 py-4">
+                          <button class="text-blue-600 hover:text-blue-900 mr-2">
+                            <i class="fas fa-edit"></i>
+                          </button>
+                          <button class="text-red-600 hover:text-red-900">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </td>
+                      </tr>
+                      <tr class="bg-white border-b">
+                        <td class="px-6 py-4 font-medium text-gray-900">MX-503-7654B</td>
+                        <td class="px-6 py-4">Sistema Eléctrico</td>
+                        <td class="px-6 py-4">Sistema eléctrico para vehículos híbridos</td>
+                        <td class="px-6 py-4">
+                          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            Prototipo
+                          </span>
+                        </td>
+                        <td class="px-6 py-4">
+                          <button class="text-blue-600 hover:text-blue-900 mr-2">
+                            <i class="fas fa-edit"></i>
+                          </button>
+                          <button class="text-red-600 hover:text-red-900">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </td>
+                      </tr>
+                      <tr class="bg-white">
+                        <td class="px-6 py-4 font-medium text-gray-900">MX-715-3890E</td>
+                        <td class="px-6 py-4">Suspensión Neumática</td>
+                        <td class="px-6 py-4">Sistema de suspensión regulable</td>
+                        <td class="px-6 py-4">
+                          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                            Inactivo
+                          </span>
+                        </td>
+                        <td class="px-6 py-4">
+                          <button class="text-blue-600 hover:text-blue-900 mr-2">
+                            <i class="fas fa-edit"></i>
+                          </button>
+                          <button class="text-red-600 hover:text-red-900">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Guía NP -->
+            <div class="col-span-1">
+              <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Formato de Número de Parte</h2>
+                <div class="mb-4">
+                  <p class="text-gray-700">Los números de parte deben seguir el siguiente formato:</p>
+                  <div class="bg-gray-50 p-4 rounded-lg mt-2">
+                    <code class="text-lg font-mono">XX-000-0000X</code>
+                  </div>
+                </div>
+                <div class="space-y-3">
+                  <div>
+                    <p class="text-sm font-medium text-gray-700">Donde:</p>
+                  </div>
+                  <div>
+                    <p class="text-sm text-gray-700"><span class="font-mono text-blue-600 font-medium">XX</span>: Prefijo de país (2 letras mayúsculas)</p>
+                  </div>
+                  <div>
+                    <p class="text-sm text-gray-700"><span class="font-mono text-blue-600 font-medium">000</span>: Código de categoría (3 dígitos)</p>
+                  </div>
+                  <div>
+                    <p class="text-sm text-gray-700"><span class="font-mono text-blue-600 font-medium">0000</span>: Número secuencial (4 dígitos)</p>
+                  </div>
+                  <div>
+                    <p class="text-sm text-gray-700"><span class="font-mono text-blue-600 font-medium">X</span>: Letra de versión (opcional)</p>
+                  </div>
+                </div>
+                
+                <div class="mt-6">
+                  <h3 class="text-md font-medium text-gray-900 mb-2">Códigos de categoría comunes</h3>
+                  <ul class="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                    <li>100-199: Componentes de motor</li>
+                    <li>200-299: Sistemas de frenos</li>
+                    <li>300-399: Transmisión</li>
+                    <li>400-499: Sistemas de refrigeración</li>
+                    <li>500-599: Sistemas eléctricos</li>
+                    <li>700-799: Suspensión</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal para nuevo NP -->
+          <div id="npModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+              <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                  <h2 class="text-xl font-semibold text-gray-800">Gestionar Número de Parte</h2>
+                  <button id="closeNpModal" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="p-6">
+                <form id="npForm">
+                  <div class="space-y-4">
+                    <div>
+                      <label for="npNumber" class="block text-sm font-medium text-gray-700 mb-1">Número de Parte</label>
+                      <input type="text" id="npNumber" class="form-control" placeholder="Formato: XX-000-0000X">
+                      <p class="mt-1 text-xs text-gray-500">Debe seguir el formato: XX-000-0000X</p>
+                    </div>
+                    
+                    <div>
+                      <label for="npModel" class="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
+                      <input type="text" id="npModel" class="form-control" placeholder="Nombre del modelo">
+                    </div>
+                    
+                    <div>
+                      <label for="npDescription" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                      <textarea id="npDescription" rows="3" class="form-control" placeholder="Descripción detallada del modelo"></textarea>
+                    </div>
+                    
+                    <div>
+                      <label for="npStatus" class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                      <select id="npStatus" class="form-control">
+                        <option value="active">Activo</option>
+                        <option value="prototype">Prototipo</option>
+                        <option value="inactive">Inactivo</option>
+                      </select>
+                    </div>
+                    
+                    <div class="pt-3 flex justify-end space-x-3">
+                      <button type="button" id="cancelNpBtn" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
+                        Cancelar
+                      </button>
+                      <button type="button" id="saveNpBtn" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+                        Guardar
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Métricas Page -->
+        <div id="metricasPage" class="hidden animate__animated">
+          <div class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">Métricas de Rendimiento</h1>
+            <p class="text-gray-600 mt-1">Análisis en tiempo real e histórico de los indicadores clave</p>
+          </div>
+          
+          <div class="bg-white rounded-lg shadow mb-6">
+            <div class="p-6 border-b border-gray-200">
+              <ul class="flex flex-wrap text-sm font-medium text-center border-b border-gray-200">
+                <li class="mr-2">
+                  <a href="javascript:void(0)" class="inline-block p-4 rounded-t-lg border-b-2 border-blue-600 active text-blue-600" id="liveMetricsTab">
+                    Métricas en Tiempo Real
+                  </a>
+                </li>
+                <li class="mr-2">
+                  <a href="javascript:void(0)" class="inline-block p-4 rounded-t-lg border-b-2 border-transparent hover:text-gray-600 hover:border-gray-300" id="historicalMetricsTab">
+                    Histórico
+                  </a>
+                </li>
+                <li class="mr-2">
+                  <a href="javascript:void(0)" class="inline-block p-4 rounded-t-lg border-b-2 border-transparent hover:text-gray-600 hover:border-gray-300" id="reportMetricsTab">
+                    Reportes
+                  </a>
+                </li>
+              </ul>
+            </div>
+            
+            <div class="p-6">
+              <!-- Live Metrics Content -->
+              <div id="liveMetricsContent">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                  <!-- KPI Cards -->
+                  <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm metric-card">
+                    <div class="flex items-center justify-between mb-2">
+                      <h3 class="text-sm font-medium text-gray-500">Tiempo promedio de surtido</h3>
+                      <span class="text-xs text-gray-400">Últimas 24h</span>
+                    </div>
+                    <div class="flex items-baseline">
+                      <p class="text-2xl font-semibold text-gray-900">42s</p>
+                      <p class="ml-2 text-sm font-medium text-green-600">
+                        <i class="fas fa-arrow-down mr-1"></i>
+                        <span>8.1%</span>
+                      </p>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                      <div class="text-xs text-gray-500">vs. objetivo: 45s</div>
+                      <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                        <div class="bg-green-500 h-1.5 rounded-full" style="width: 93%"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm metric-card" style="border-left-color: #f39c12;">
+                    <div class="flex items-center justify-between mb-2">
+                      <h3 class="text-sm font-medium text-gray-500">Pulls por hora</h3>
+                      <span class="text-xs text-gray-400">Promedio actual</span>
+                    </div>
+                    <div class="flex items-baseline">
+                      <p class="text-2xl font-semibold text-gray-900">38</p>
+                      <p class="ml-2 text-sm font-medium text-green-600">
+                        <i class="fas fa-arrow-up mr-1"></i>
+                        <span>12.5%</span>
+                      </p>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                      <div class="text-xs text-gray-500">vs. hora anterior: 34</div>
+                      <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                        <div class="bg-yellow-500 h-1.5 rounded-full" style="width: 88%"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm metric-card" style="border-left-color: #3498db;">
+                    <div class="flex items-center justify-between mb-2">
+                      <h3 class="text-sm font-medium text-gray-500">Peso acumulado hoy</h3>
+                      <span class="text-xs text-gray-400">En tiempo real</span>
+                    </div>
+                    <div class="flex items-baseline">
+                      <p class="text-2xl font-semibold text-gray-900">2,684 kg</p>
+                      <p class="ml-2 text-sm font-medium text-green-600">
+                        <i class="fas fa-arrow-up mr-1"></i>
+                        <span>5.2%</span>
+                      </p>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                      <div class="text-xs text-gray-500">vs. promedio diario: 2,551 kg</div>
+                      <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                        <div class="bg-blue-500 h-1.5 rounded-full" style="width: 77%"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm metric-card" style="border-left-color: #e74c3c;">
+                    <div class="flex items-center justify-between mb-2">
+                      <h3 class="text-sm font-medium text-gray-500">Excepciones Off-Plan</h3>
+                      <span class="text-xs text-gray-400">Hoy</span>
+                    </div>
+                    <div class="flex items-baseline">
+                      <p class="text-2xl font-semibold text-gray-900">7</p>
+                      <p class="ml-2 text-sm font-medium text-red-600">
+                        <i class="fas fa-arrow-up mr-1"></i>
+                        <span>3</span>
+                      </p>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                      <div class="text-xs text-gray-500">vs. ayer: 4</div>
+                      <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                        <div class="bg-red-500 h-1.5 rounded-full" style="width: 54%"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  <!-- Duration LineChart -->
+                  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="flex justify-between items-center mb-4">
+                      <h2 class="text-lg font-medium text-gray-900">Tiempo de Surtido (últimas 24h)</h2>
+                      <div class="flex items-center space-x-2">
+                        <div class="flex items-center">
+                          <div class="w-3 h-3 bg-blue-500 rounded-full mr-1"></div>
+                          <span class="text-xs text-gray-600">Actual</span>
+                        </div>
+                        <div class="flex items-center">
+                          <div class="w-3 h-3 bg-gray-300 rounded-full mr-1"></div>
+                          <span class="text-xs text-gray-600">Objetivo</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="h-72">
+                      <canvas id="durationChart"></canvas>
+                    </div>
+                  </div>
+                  
+                  <!-- Pulls per Hour BarChart -->
+                  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="flex justify-between items-center mb-4">
+                      <h2 class="text-lg font-medium text-gray-900">Pulls por Hora</h2>
+                      <select class="form-control py-1 px-2 text-sm">
+                        <option value="today">Hoy</option>
+                        <option value="yesterday">Ayer</option>
+                      </select>
+                    </div>
+                    <div class="h-72">
+                      <canvas id="pullsPerHourChart"></canvas>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <!-- Weight AreaChart -->
+                  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="flex justify-between items-center mb-4">
+                      <h2 class="text-lg font-medium text-gray-900">Peso Acumulado por Día</h2>
+                      <select class="form-control py-1 px-2 text-sm">
+                        <option value="week">Última semana</option>
+                        <option value="month">Último mes</option>
+                      </select>
+                    </div>
+                    <div class="h-72">
+                      <canvas id="weightAreaChart"></canvas>
+                    </div>
+                  </div>
+                  
+                  <!-- SMED Compliance RadialBarChart -->
+                  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="flex justify-between items-center mb-4">
+                      <h2 class="text-lg font-medium text-gray-900">Cumplimiento SMED por Modelo</h2>
+                      <select class="form-control py-1 px-2 text-sm">
+                        <option value="today">Hoy</option>
+                        <option value="week">Esta semana</option>
+                      </select>
+                    </div>
+                    <div class="h-72">
+                      <canvas id="smedComplianceRadialChart"></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Historical Metrics Content -->
+              <div id="historicalMetricsContent" class="hidden">
+                <div class="mb-6">
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label for="dateRangeStart" class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
+                      <input type="text" id="dateRangeStart" class="form-control" placeholder="Seleccionar fecha">
+                    </div>
+                    <div>
+                      <label for="dateRangeEnd" class="block text-sm font-medium text-gray-700 mb-1">Fecha Fin</label>
+                      <input type="text" id="dateRangeEnd" class="form-control" placeholder="Seleccionar fecha">
+                    </div>
+                    <div class="flex items-end">
+                      <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+                        <i class="fas fa-search mr-1"></i> Buscar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
+                  <div class="p-6 border-b border-gray-200">
+                    <h2 class="text-lg font-medium text-gray-900">Registros Históricos</h2>
+                  </div>
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-500">
+                      <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                          <th scope="col" class="px-6 py-3">ID</th>
+                          <th scope="col" class="px-6 py-3">Modelo</th>
+                          <th scope="col" class="px-6 py-3">Fecha y Hora</th>
+                          <th scope="col" class="px-6 py-3">Pulls</th>
+                          <th scope="col" class="px-6 py-3">Peso (kg)</th>
+                          <th scope="col" class="px-6 py-3">Duración (s)</th>
+                          <th scope="col" class="px-6 py-3">En Plan</th>
+                          <th scope="col" class="px-6 py-3">Usuario</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr class="bg-white border-b">
+                          <td class="px-6 py-4">15234</td>
+                          <td class="px-6 py-4 font-medium text-gray-900">MX-345-1082B</td>
+                          <td class="px-6 py-4">10/05/2025 14:32:45</td>
+                          <td class="px-6 py-4">5</td>
+                          <td class="px-6 py-4">42.5</td>
+                          <td class="px-6 py-4">38</td>
+                          <td class="px-6 py-4">
+                            <span class="badge-on-plan plan-badge">Sí</span>
+                          </td>
+                          <td class="px-6 py-4">jdiaz</td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                          <td class="px-6 py-4">15233</td>
+                          <td class="px-6 py-4 font-medium text-gray-900">MX-128-9876A</td>
+                          <td class="px-6 py-4">10/05/2025 14:28:12</td>
+                          <td class="px-6 py-4">3</td>
+                          <td class="px-6 py-4">35.2</td>
+                          <td class="px-6 py-4">45</td>
+                          <td class="px-6 py-4">
+                            <span class="badge-on-plan plan-badge">Sí</span>
+                          </td>
+                          <td class="px-6 py-4">agomez</td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                          <td class="px-6 py-4">15232</td>
+                          <td class="px-6 py-4 font-medium text-gray-900">MX-503-7654B</td>
+                          <td class="px-6 py-4">10/05/2025 14:15:33</td>
+                          <td class="px-6 py-4">2</td>
+                          <td class="px-6 py-4">18.7</td>
+                          <td class="px-6 py-4">64</td>
+                          <td class="px-6 py-4">
+                            <span class="badge-off-plan plan-badge">No</span>
+                          </td>
+                          <td class="px-6 py-4">jdiaz</td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                          <td class="px-6 py-4">15231</td>
+                          <td class="px-6 py-4 font-medium text-gray-900">MX-201-4567C</td>
+                          <td class="px-6 py-4">10/05/2025 14:08:51</td>
+                          <td class="px-6 py-4">6</td>
+                          <td class="px-6 py-4">27.3</td>
+                          <td class="px-6 py-4">32</td>
+                          <td class="px-6 py-4">
+                            <span class="badge-on-plan plan-badge">Sí</span>
+                          </td>
+                          <td class="px-6 py-4">rsanchez</td>
+                        </tr>
+                        <tr class="bg-white">
+                          <td class="px-6 py-4">15230</td>
+                          <td class="px-6 py-4 font-medium text-gray-900">MX-345-1082B</td>
+                          <td class="px-6 py-4">10/05/2025 13:55:20</td>
+                          <td class="px-6 py-4">4</td>
+                          <td class="px-6 py-4">36.0</td>
+                          <td class="px-6 py-4">41</td>
+                          <td class="px-6 py-4">
+                            <span class="badge-on-plan plan-badge">Sí</span>
+                          </td>
+                          <td class="px-6 py-4">agomez</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="p-4 flex items-center justify-between">
+                    <div class="text-sm text-gray-700">
+                      Mostrando <span class="font-medium">1</span> a <span class="font-medium">5</span> de <span class="font-medium">54</span> registros
+                    </div>
+                    <div>
+                      <nav class="flex items-center">
+                        <button class="px-3 py-1 text-gray-500 bg-white border border-gray-300 rounded-md mr-2 disabled:opacity-50" disabled>
+                          Anterior
+                        </button>
+                        <button class="px-3 py-1 text-gray-500 bg-white border border-gray-300 rounded-md">
+                          Siguiente
+                        </button>
+                      </nav>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="flex justify-end">
+                  <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md flex items-center">
+                    <i class="fas fa-download mr-2"></i> Exportar CSV
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Report Metrics Content -->
+              <div id="reportMetricsContent" class="hidden">
+                <div class="mb-6">
+                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <label for="reportType" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Reporte</label>
+                      <select id="reportType" class="form-control">
+                        <option value="smed">Cumplimiento SMED</option>
+                        <option value="offplan">Excepciones Off-Plan</option>
+                        <option value="productivity">Productividad</option>
+                        <option value="summary">Resumen General</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label for="reportPeriod" class="block text-sm font-medium text-gray-700 mb-1">Periodo</label>
+                      <select id="reportPeriod" class="form-control">
+                        <option value="daily">Diario</option>
+                        <option value="weekly">Semanal</option>
+                        <option value="monthly">Mensual</option>
+                        <option value="custom">Personalizado</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label for="reportFormat" class="block text-sm font-medium text-gray-700 mb-1">Formato</label>
+                      <select id="reportFormat" class="form-control">
+                        <option value="pdf">PDF</option>
+                        <option value="excel">Excel</option>
+                        <option value="csv">CSV</option>
+                      </select>
+                    </div>
+                    <div class="flex items-end">
+                      <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md w-full">
+                        <i class="fas fa-file-alt mr-1"></i> Generar Reporte
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                  <h2 class="text-lg font-medium text-gray-900 mb-4">Reportes Guardados</h2>
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-500">
+                      <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                          <th scope="col" class="px-6 py-3">Nombre</th>
+                          <th scope="col" class="px-6 py-3">Tipo</th>
+                          <th scope="col" class="px-6 py-3">Periodo</th>
+                          <th scope="col" class="px-6 py-3">Formato</th>
+                          <th scope="col" class="px-6 py-3">Generado por</th>
+                          <th scope="col" class="px-6 py-3">Fecha</th>
+                          <th scope="col" class="px-6 py-3">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr class="bg-white border-b">
+                          <td class="px-6 py-4 font-medium text-gray-900">Reporte_SMED_Mayo_2025</td>
+                          <td class="px-6 py-4">Cumplimiento SMED</td>
+                          <td class="px-6 py-4">Mayo 2025</td>
+                          <td class="px-6 py-4">PDF</td>
+                          <td class="px-6 py-4">Admin</td>
+                          <td class="px-6 py-4">10/05/2025</td>
+                          <td class="px-6 py-4">
+                            <button class="text-blue-600 hover:text-blue-900 mr-2">
+                              <i class="fas fa-download"></i>
+                            </button>
+                          </td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                          <td class="px-6 py-4 font-medium text-gray-900">Off-Plan_Exceptions_Q1_2025</td>
+                          <td class="px-6 py-4">Excepciones Off-Plan</td>
+                          <td class="px-6 py-4">Q1 2025</td>
+                          <td class="px-6 py-4">Excel</td>
+                          <td class="px-6 py-4">Carlos Rodriguez</td>
+                          <td class="px-6 py-4">31/03/2025</td>
+                          <td class="px-6 py-4">
+                            <button class="text-blue-600 hover:text-blue-900 mr-2">
+                              <i class="fas fa-download"></i>
+                            </button>
+                          </td>
+                        </tr>
+                        <tr class="bg-white">
+                          <td class="px-6 py-4 font-medium text-gray-900">Productivity_Report_Apr_2025</td>
+                          <td class="px-6 py-4">Productividad</td>
+                          <td class="px-6 py-4">Abril 2025</td>
+                          <td class="px-6 py-4">PDF</td>
+                          <td class="px-6 py-4">Maria Lopez</td>
+                          <td class="px-6 py-4">01/05/2025</td>
+                          <td class="px-6 py-4">
+                            <button class="text-blue-600 hover:text-blue-900 mr-2">
+                              <i class="fas fa-download"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <h2 class="text-lg font-medium text-gray-900 mb-4">Reportes Programados</h2>
+                  <div class="mb-4">
+                    <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center">
+                      <i class="fas fa-calendar-plus mr-2"></i> Programar Nuevo Reporte
+                    </button>
+                  </div>
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-500">
+                      <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                          <th scope="col" class="px-6 py-3">Nombre</th>
+                          <th scope="col" class="px-6 py-3">Tipo</th>
+                          <th scope="col" class="px-6 py-3">Frecuencia</th>
+                          <th scope="col" class="px-6 py-3">Formato</th>
+                          <th scope="col" class="px-6 py-3">Destinatarios</th>
+                          <th scope="col" class="px-6 py-3">Estado</th>
+                          <th scope="col" class="px-6 py-3">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr class="bg-white border-b">
+                          <td class="px-6 py-4 font-medium text-gray-900">Reporte Semanal SMED</td>
+                          <td class="px-6 py-4">Cumplimiento SMED</td>
+                          <td class="px-6 py-4">Lunes 8:00 AM</td>
+                          <td class="px-6 py-4">PDF</td>
+                          <td class="px-6 py-4">
+                            <span class="text-xs inline-block">3 destinatarios</span>
+                          </td>
+                          <td class="px-6 py-4">
+                            <div class="toggle-button active">
+                              <div class="toggle-slider"></div>
+                            </div>
+                          </td>
+                          <td class="px-6 py-4">
+                            <button class="text-blue-600 hover:text-blue-900 mr-2">
+                              <i class="fas fa-edit"></i>
+                            </button>
+                          </td>
+                        </tr>
+                        <tr class="bg-white border-b">
+                          <td class="px-6 py-4 font-medium text-gray-900">Informe Mensual Off-Plan</td>
+                          <td class="px-6 py-4">Excepciones Off-Plan</td>
+                          <td class="px-6 py-4">1er día del mes</td>
+                          <td class="px-6 py-4">Excel</td>
+                          <td class="px-6 py-4">
+                            <span class="text-xs inline-block">5 destinatarios</span>
+                          </td>
+                          <td class="px-6 py-4">
+                            <div class="toggle-button active">
+                              <div class="toggle-slider"></div>
+                            </div>
+                          </td>
+                          <td class="px-6 py-4">
+                            <button class="text-blue-600 hover:text-blue-900 mr-2">
+                              <i class="fas fa-edit"></i>
+                            </button>
+                          </td>
+                        </tr>
+                        <tr class="bg-white">
+                          <td class="px-6 py-4 font-medium text-gray-900">Resumen Diario</td>
+                          <td class="px-6 py-4">Resumen General</td>
+                          <td class="px-6 py-4">Diario 18:00 PM</td>
+                          <td class="px-6 py-4">PDF</td>
+                          <td class="px-6 py-4">
+                            <span class="text-xs inline-block">2 destinatarios</span>
+                          </td>
+                          <td class="px-6 py-4">
+                            <div class="toggle-button">
+                              <div class="toggle-slider"></div>
+                            </div>
+                          </td>
+                          <td class="px-6 py-4">
+                            <button class="text-blue-600 hover:text-blue-900 mr-2">
+                              <i class="fas fa-edit"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Panel de Notificaciones -->
+  <div id="notificationsPanel" class="notifications-panel">
+    <div class="p-4 border-b border-gray-200">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-medium">Notificaciones</h3>
+        <button id="closeNotifications" class="text-gray-400 hover:text-gray-500">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+    <div class="p-2 max-h-96 overflow-y-auto">
+      <div class="notification-item">
+        <div class="flex items-start">
+          <div class="bg-red-100 rounded-full p-2 mr-3">
+            <i class="fas fa-exclamation text-red-600"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-900">Modelo fuera de plan</p>
+            <p class="text-xs text-gray-500">Sistema Eléctrico (MX-503-7654B) registrado por Jorge Díaz</p>
+            <p class="text-xs text-gray-400 mt-1">Hace 25 minutos</p>
+          </div>
+        </div>
+      </div>
+      <div class="notification-item">
+        <div class="flex items-start">
+          <div class="bg-yellow-100 rounded-full p-2 mr-3">
+            <i class="fas fa-stopwatch text-yellow-600"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-900">SMED excedido</p>
+            <p class="text-xs text-gray-500">Motor Principal V8 - 53s (18% por encima del objetivo)</p>
+            <p class="text-xs text-gray-400 mt-1">Hace 1 hora</p>
+          </div>
+        </div>
+      </div>
+      <div class="notification-item">
+        <div class="flex items-start">
+          <div class="bg-blue-100 rounded-full p-2 mr-3">
+            <i class="fas fa-calendar-check text-blue-600"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-900">Nuevo plan publicado</p>
+            <p class="text-xs text-gray-500">El plan v2.3 ha sido publicado por Admin</p>
+            <p class="text-xs text-gray-400 mt-1">Hace 1 día</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="p-3 border-t border-gray-200">
+      <button class="w-full text-center text-sm text-blue-600 hover:text-blue-800">
+        Ver todas las notificaciones
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script id="app-script">
+    // Inicialización de la aplicación
+    document.addEventListener('DOMContentLoaded', function() {
+      // Variables globales
+      let sidebarCollapsed = false;
+      let activeTab = 'dashboardPage';
+      let activeMetricsTab = 'liveMetricsContent';
+      let timerInterval = null;
+      let timerStartTime = 0;
+      
+      // Elementos del DOM
+      const sidebar = document.getElementById('sidebar');
+      const content = document.getElementById('content');
+      const toggleSidebarBtn = document.getElementById('toggleSidebar');
+      const notificationsButton = document.getElementById('notificationsButton');
+      const notificationsPanel = document.getElementById('notificationsPanel');
+      const closeNotificationsBtn = document.getElementById('closeNotifications');
+      const pageTitle = document.getElementById('pageTitle');
+      const mainContent = document.getElementById('mainContent');
+      const toastContainer = document.getElementById('toastContainer');
+      
+      // Referencias a páginas
+      const pages = {
+        dashboardLink: 'dashboardPage',
+        planLink: 'planPage',
+        produccionLink: 'produccionPage',
+        bomLink: 'bomPage',
+        npLink: 'npPage',
+        metricasLink: 'metricasPage',
+        reportesLink: 'dashboardPage'  // Placeholder - redirige al dashboard
+      };
+      
+      // Referencias a modales y drawers
+      const modals = {
+        newPlanModal: {
+          modal: document.getElementById('newPlanModal'),
+          openBtn: document.getElementById('newPlanBtn'),
+          closeBtn: document.getElementById('closePlanModal'),
+          cancelBtn: document.getElementById('cancelPlanBtn'),
+          saveBtn: document.getElementById('savePlanBtn')
+        },
+        offPlanAlertModal: {
+          modal: document.getElementById('offPlanAlertModal'),
+          closeBtn: document.getElementById('closeAlertModal'),
+          proceedBtn: document.getElementById('proceedBtn')
+        },
+        bomModal: {
+          modal: document.getElementById('bomModal'),
+          openBtn: document.getElementById('newBomBtn'),
+          closeBtn: document.getElementById('closeBomModal'),
+          cancelBtn: document.getElementById('cancelBomBtn'),
+          saveBtn: document.getElementById('saveBomBtn')
+        },
+        bomDrawer: {
+          drawer: document.getElementById('bomDrawer'),
+          backdrop: document.getElementById('bomDrawerBackdrop'),
+          closeBtn: document.getElementById('closeBomDrawer'),
+          expandBtns: document.querySelectorAll('.expandBom')
+        },
+        npModal: {
+          modal: document.getElementById('npModal'),
+          openBtn: document.getElementById('newNpBtn'),
+          closeBtn: document.getElementById('closeNpModal'),
+          cancelBtn: document.getElementById('cancelNpBtn'),
+          saveBtn: document.getElementById('saveNpBtn')
+        }
+      };
+      
+      // Eventos de navegación
+      for (let linkId in pages) {
+        const link = document.getElementById(linkId);
+        if (link) {
+          link.addEventListener('click', function() {
+            showPage(pages[linkId]);
+            updatePageTitle(linkId.replace('Link', ''));
+          });
+        }
+      }
+      
+      // Inicializar datepickers
+      initializeDatePickers();
+      
+      // Inicializar gráficos
+      initializeCharts();
+      
+      // Pestañas métricas
+      document.getElementById('liveMetricsTab').addEventListener('click', function() {
+        showMetricsTab('liveMetricsContent');
+      });
+      
+      document.getElementById('historicalMetricsTab').addEventListener('click', function() {
+        showMetricsTab('historicalMetricsContent');
+      });
+      
+      document.getElementById('reportMetricsTab').addEventListener('click', function() {
+        showMetricsTab('reportMetricsContent');
+      });
+      
+      // Toggle sidebar
+      toggleSidebarBtn.addEventListener('click', function() {
+        sidebarCollapsed = !sidebarCollapsed;
+        
+        if (sidebarCollapsed) {
+          sidebar.classList.add('sidebar-collapsed');
+          content.classList.add('content-expanded');
+        } else {
+          sidebar.classList.remove('sidebar-collapsed');
+          content.classList.remove('content-expanded');
+        }
+      });
+      
+      // Toggle notifications panel
+      notificationsButton.addEventListener('click', function() {
+        notificationsPanel.classList.toggle('show');
+      });
+      
+      closeNotificationsBtn.addEventListener('click', function() {
+        notificationsPanel.classList.remove('show');
+      });
+      
+      // Modales y Drawers - Eventos
+      setupModals();
+      
+      // Formulario de producción
+      setupProduccionForm();
+      
+      // Componente toggle
+      setupToggleButtons();
+      
+      // Función para mostrar una página específica
+      function showPage(pageId) {
+        // Ocultar todas las páginas
+        document.querySelectorAll('#mainContent > div').forEach(page => {
+          page.classList.add('hidden');
+          page.classList.remove('animate__fadeIn');
+        });
+        
+        // Mostrar la página seleccionada
+        const selectedPage = document.getElementById(pageId);
+        if (selectedPage) {
+          selectedPage.classList.remove('hidden');
+          selectedPage.classList.add('animate__fadeIn');
+          activeTab = pageId;
+        }
+      }
+      
+      // Función para cambiar el título de la página
+      function updatePageTitle(title) {
+        const formattedTitle = title.charAt(0).toUpperCase() + title.slice(1);
+        pageTitle.textContent = formattedTitle;
+      }
+      
+      // Función para mostrar una pestaña específica en métricas
+      function showMetricsTab(tabId) {
+        // Ocultar todas las pestañas
+        document.querySelectorAll('#liveMetricsContent, #historicalMetricsContent, #reportMetricsContent').forEach(tab => {
+          tab.classList.add('hidden');
+        });
+        
+        // Mostrar la pestaña seleccionada
+        document.getElementById(tabId).classList.remove('hidden');
+        activeMetricsTab = tabId;
+        
+        // Actualizar el estilo de las pestañas
+        document.querySelectorAll('#liveMetricsTab, #historicalMetricsTab, #reportMetricsTab').forEach(tab => {
+          tab.classList.remove('active', 'text-blue-600', 'border-blue-600');
+          tab.classList.add('border-transparent', 'hover:text-gray-600', 'hover:border-gray-300');
+        });
+        
+        let activeTabId;
+        switch(tabId) {
+          case 'liveMetricsContent':
+            activeTabId = 'liveMetricsTab';
+            break;
+          case 'historicalMetricsContent':
+            activeTabId = 'historicalMetricsTab';
+            break;
+          case 'reportMetricsContent':
+            activeTabId = 'reportMetricsTab';
+            break;
+        }
+        
+        document.getElementById(activeTabId).classList.add('active', 'text-blue-600', 'border-blue-600');
+        document.getElementById(activeTabId).classList.remove('border-transparent', 'hover:text-gray-600', 'hover:border-gray-300');
+      }
+      
+      // Inicialización de Flatpickr para selectores de fecha
+      function initializeDatePickers() {
+        const datepickerOptions = {
+          dateFormat: 'd/m/Y',
+          locale: 'es'
+        };
+        
+        if (document.getElementById('startDate')) {
+          flatpickr('#startDate', datepickerOptions);
+        }
+        
+        if (document.getElementById('endDate')) {
+          flatpickr('#endDate', datepickerOptions);
+        }
+        
+        if (document.getElementById('dateRangeStart')) {
+          flatpickr('#dateRangeStart', datepickerOptions);
+        }
+        
+        if (document.getElementById('dateRangeEnd')) {
+          flatpickr('#dateRangeEnd', datepickerOptions);
+        }
+      }
+      
+      // Inicialización de gráficos
+      function initializeCharts() {
+        // Dashboard Charts
+        if (document.getElementById('pullsByHourChart')) {
+          const pullsByHourCtx = document.getElementById('pullsByHourChart').getContext('2d');
+          const pullsByHourChart = new Chart(pullsByHourCtx, {
+            type: 'bar',
+            data: {
+              labels: ['9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'],
+              datasets: [{
+                label: 'Pulls por Hora',
+                data: [32, 45, 38, 25, 40, 38, 42, 35],
+                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                y: {
+                  beginAtZero: true
+                }
+              }
+            }
+          });
+        }
+        
+        if (document.getElementById('smedComplianceChart')) {
+          const smedComplianceCtx = document.getElementById('smedComplianceChart').getContext('2d');
+          const smedComplianceChart = new Chart(smedComplianceCtx, {
+            type: 'doughnut',
+            data: {
+              labels: ['Cumplimiento', 'Restante'],
+              datasets: [{
+                data: [88, 12],
+                backgroundColor: [
+                  'rgba(46, 204, 113, 0.8)',
+                  'rgba(220, 220, 220, 0.8)'
+                ],
+                borderWidth: 0
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              cutout: '75%',
+              plugins: {
+                legend: {
+                  display: false
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      return `${context.label}: ${context.parsed}%`;
+                    }
+                  }
+                }
+              }
+            }
+          });
+          
+          // Añadir texto central
+          Chart.register({
+            id: 'centerText',
+            afterDraw: function(chart) {
+              if (chart.config.type === 'doughnut') {
+                const width = chart.width;
+                const height = chart.height;
+                const ctx = chart.ctx;
+                
+                ctx.restore();
+                const fontSize = (height / 114).toFixed(2);
+                ctx.font = fontSize + 'em sans-serif';
+                ctx.textBaseline = 'middle';
+                
+                const text = '88%';
+                const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                const textY = height / 2;
+                
+                ctx.fillText(text, textX, textY);
+                ctx.save();
+              }
+            }
+          });
+        }
+        
+        if (document.getElementById('weightChart')) {
+          const weightChartCtx = document.getElementById('weightChart').getContext('2d');
+          const weightChart = new Chart(weightChartCtx, {
+            type: 'line',
+            data: {
+              labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+              datasets: [{
+                label: 'Peso (kg)',
+                data: [2450, 2650, 2400, 2800, 2650, 1800, 1600],
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                borderColor: 'rgba(52, 152, 219, 1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false
+            }
+          });
+        }
+        
+        // Excepciones Chart
+        if (document.getElementById('exceptionsChart')) {
+          const exceptionsChartCtx = document.getElementById('exceptionsChart').getContext('2d');
+          const exceptionsChart = new Chart(exceptionsChartCtx, {
+            type: 'bar',
+            data: {
+              labels: ['MX-345-1082B', 'MX-128-9876A', 'MX-503-7654B', 'MX-715-3890E'],
+              datasets: [{
+                label: 'Excepciones Off-Plan',
+                data: [1, 0, 4, 2],
+                backgroundColor: 'rgba(231, 76, 60, 0.7)',
+                borderColor: 'rgba(231, 76, 60, 1)',
+                borderWidth: 1
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: {
+                    stepSize: 1
+                  }
+                }
+              }
+            }
+          });
+        }
+        
+        // Métricas Charts
+        if (document.getElementById('durationChart')) {
+          const durationChartCtx = document.getElementById('durationChart').getContext('2d');
+          
+          // Generar datos
+          const hours = Array.from({length: 24}, (_, i) => `${i}:00`);
+          const durationData = Array.from({length: 24}, () => Math.floor(Math.random() * 20) + 30);  // 30-50 segundos
+          const targetData = Array.from({length: 24}, () => 45);  // Objetivo constante
+          
+          const durationChart = new Chart(durationChartCtx, {
+            type: 'line',
+            data: {
+              labels: hours,
+              datasets: [
+                {
+                  label: 'Tiempo de surtido (s)',
+                  data: durationData,
+                  backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                  borderColor: 'rgba(54, 162, 235, 1)',
+                  borderWidth: 2,
+                  fill: false,
+                  tension: 0.4
+                },
+                {
+                  label: 'Objetivo SMED',
+                  data: targetData,
+                  backgroundColor: 'transparent',
+                  borderColor: 'rgba(220, 220, 220, 1)',
+                  borderWidth: 2,
+                  borderDash: [5, 5],
+                  fill: false,
+                  tension: 0
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                y: {
+                  beginAtZero: false
+                }
+              },
+              interaction: {
+                mode: 'index',
+                intersect: false
+              }
+            }
+          });
+        }
+        
+        if (document.getElementById('pullsPerHourChart')) {
+          const pullsPerHourChartCtx = document.getElementById('pullsPerHourChart').getContext('2d');
+          
+          const pullsPerHourChart = new Chart(pullsPerHourChartCtx, {
+            type: 'bar',
+            data: {
+              labels: ['9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'],
+              datasets: [{
+                label: 'Pulls por Hora',
+                data: [32, 45, 38, 25, 40, 38, 42, 35],
+                backgroundColor: 'rgba(54, 162, 235, 0.7)'
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false
+            }
+          });
+        }
+        
+        if (document.getElementById('weightAreaChart')) {
+          const weightAreaChartCtx = document.getElementById('weightAreaChart').getContext('2d');
+          
+          const weightAreaChart = new Chart(weightAreaChartCtx, {
+            type: 'line',
+            data: {
+              labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+              datasets: [{
+                label: 'Peso Acumulado (kg)',
+                data: [2450, 2650, 2400, 2800, 2650, 1800, 1600],
+                backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                borderColor: 'rgba(52, 152, 219, 1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false
+            }
+          });
+        }
+        
+        if (document.getElementById('smedComplianceRadialChart')) {
+          const smedComplianceRadialChartCtx = document.getElementById('smedComplianceRadialChart').getContext('2d');
+          
+          const smedComplianceRadialChart = new Chart(smedComplianceRadialChartCtx, {
+            type: 'polarArea',
+            data: {
+              labels: ['Motor V8', 'Transmisión', 'Frenos', 'Refrigeración', 'Eléctrico'],
+              datasets: [{
+                data: [85, 92, 110, 87, 75],
+                backgroundColor: [
+                  'rgba(54, 162, 235, 0.7)',
+                  'rgba(75, 192, 192, 0.7)',
+                  'rgba(255, 99, 132, 0.7)',
+                  'rgba(255, 205, 86, 0.7)',
+                  'rgba(153, 102, 255, 0.7)'
+                ]
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scale: {
+                ticks: {
+                  beginAtZero: true
+                }
+              }
+            }
+          });
+        }
+      }
+      
+      // Configurar modales y drawers
+      function setupModals() {
+        // Plan Modal
+        if (modals.newPlanModal.openBtn) {
+          modals.newPlanModal.openBtn.addEventListener('click', function() {
+            modals.newPlanModal.modal.classList.remove('hidden');
+          });
+          
+          modals.newPlanModal.closeBtn.addEventListener('click', function() {
+            modals.newPlanModal.modal.classList.add('hidden');
+          });
+          
+          modals.newPlanModal.cancelBtn.addEventListener('click', function() {
+            modals.newPlanModal.modal.classList.add('hidden');
+          });
+          
+          modals.newPlanModal.saveBtn.addEventListener('click', function() {
+            // Aquí iría la lógica para guardar el plan
+            modals.newPlanModal.modal.classList.add('hidden');
+            showToast('success', 'Plan guardado', 'El plan ha sido guardado y publicado correctamente.');
+          });
+        }
+        
+        // Off-Plan Alert Modal
+        if (modals.offPlanAlertModal.closeBtn) {
+          modals.offPlanAlertModal.closeBtn.addEventListener('click', function() {
+            modals.offPlanAlertModal.modal.classList.add('hidden');
+          });
+          
+          modals.offPlanAlertModal.proceedBtn.addEventListener('click', function() {
+            modals.offPlanAlertModal.modal.classList.add('hidden');
+            // Actualizar contador de excepciones
+            let counter = document.getElementById('notificationCounter');
+            counter.textContent = parseInt(counter.textContent) + 1;
+            showToast('warning', 'Excepción registrada', 'El surtido fuera de plan ha sido registrado y notificado.');
+          });
+        }
+        
+        // BOM Modal
+        if (modals.bomModal.openBtn) {
+          modals.bomModal.openBtn.addEventListener('click', function() {
+            modals.bomModal.modal.classList.remove('hidden');
+          });
+          
+          modals.bomModal.closeBtn.addEventListener('click', function() {
+            modals.bomModal.modal.classList.add('hidden');
+          });
+          
+          modals.bomModal.cancelBtn.addEventListener('click', function() {
+            modals.bomModal.modal.classList.add('hidden');
+          });
+          
+          modals.bomModal.saveBtn.addEventListener('click', function() {
+            // Aquí iría la lógica para guardar el BOM
+            modals.bomModal.modal.classList.add('hidden');
+            showToast('success', 'BOM guardado', 'La lista de materiales ha sido guardada correctamente.');
+          });
+        }
+        
+        // BOM Drawer
+        if (modals.bomDrawer.drawer) {
+          modals.bomDrawer.expandBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+              const modelId = this.dataset.model;
+              document.getElementById('drawerModelNP').textContent = modelId;
+              
+              // Simulación de datos para el modelo seleccionado
+              let modelName, componentCount, lastUpdate;
+              switch (modelId) {
+                case 'MX-345-1082B':
+                  modelName = 'Motor Principal V8';
+                  componentCount = '24';
+                  lastUpdate = '15/04/2025';
+                  break;
+                case 'MX-128-9876A':
+                  modelName = 'Transmisión Automática';
+                  componentCount = '18';
+                  lastUpdate = '10/04/2025';
+                  break;
+                default:
+                  modelName = 'Modelo Desconocido';
+                  componentCount = '0';
+                  lastUpdate = 'N/A';
+              }
+              
+              document.getElementById('bomDrawerTitle').textContent = `Componentes de ${modelName}`;
+              document.getElementById('drawerModelName').textContent = modelName;
+              document.getElementById('drawerComponentCount').textContent = componentCount;
+              document.getElementById('drawerLastUpdate').textContent = lastUpdate;
+              
+              // Cargar componentes del modelo (simulación)
+              const componentList = document.getElementById('drawerComponentList');
+              componentList.innerHTML = ''; // Limpiar contenido previo
+              
+              if (modelId === 'MX-345-1082B') {
+                const components = [
+                  { id: 'C001', desc: 'Bloque de motor V8', qty: '1', unit: 'pza', supplier: 'MotorTech Inc.' },
+                  { id: 'C002', desc: 'Pistones de aleación', qty: '8', unit: 'pza', supplier: 'PistonPro' },
+                  { id: 'C003', desc: 'Bielas de acero', qty: '8', unit: 'pza', supplier: 'SteelConn' },
+                  { id: 'C004', desc: 'Cigüeñal', qty: '1', unit: 'pza', supplier: 'MotorTech Inc.' },
+                  { id: 'C005', desc: 'Juntas de culata', qty: '2', unit: 'pza', supplier: 'SealMaster' }
+                ];
+                
+                components.forEach(comp => {
+                  componentList.innerHTML += `
+                    <tr class="bg-white border-b">
+                      <td class="px-6 py-4">${comp.id}</td>
+                      <td class="px-6 py-4">${comp.desc}</td>
+                      <td class="px-6 py-4">${comp.qty}</td>
+                      <td class="px-6 py-4">${comp.unit}</td>
+                      <td class="px-6 py-4">${comp.supplier}</td>
+                    </tr>
+                  `;
+                });
+              } else {
+                componentList.innerHTML = `
+                  <tr class="bg-white border-b">
+                    <td colspan="5" class="px-6 py-4 text-center">Cargando componentes...</td>
+                  </tr>
+                `;
+              }
+              
+              modals.bomDrawer.drawer.classList.add('show');
+              modals.bomDrawer.backdrop.classList.add('show');
+            });
+          });
+          
+          modals.bomDrawer.closeBtn.addEventListener('click', function() {
+            modals.bomDrawer.drawer.classList.remove('show');
+            modals.bomDrawer.backdrop.classList.remove('show');
+          });
+          
+          modals.bomDrawer.backdrop.addEventListener('click', function() {
+            modals.bomDrawer.drawer.classList.remove('show');
+            modals.bomDrawer.backdrop.classList.remove('show');
+          });
+        }
+        
+        // NP Modal
+        if (modals.npModal.openBtn) {
+          modals.npModal.openBtn.addEventListener('click', function() {
+            modals.npModal.modal.classList.remove('hidden');
+          });
+          
+          modals.npModal.closeBtn.addEventListener('click', function() {
+            modals.npModal.modal.classList.add('hidden');
+          });
+          
+          modals.npModal.cancelBtn.addEventListener('click', function() {
+            modals.npModal.modal.classList.add('hidden');
+          });
+          
+          modals.npModal.saveBtn.addEventListener('click', function() {
+            // Aquí iría la lógica para guardar el NP
+            const npInput = document.getElementById('npNumber');
+            const npValue = npInput.value.trim();
+            
+            // Validación simple del formato
+            const npPattern = /^[A-Z]{2}-\d{3}-\d{4}[A-Z]?$/;
+            
+            if (!npPattern.test(npValue)) {
+              showToast('error', 'Error de formato', 'El número de parte debe seguir el formato XX-000-0000X');
+              npInput.focus();
+              return;
+            }
+            
+            modals.npModal.modal.classList.add('hidden');
+            showToast('success', 'Número de Parte guardado', 'El número de parte ha sido registrado correctamente.');
+          });
+        }
+      }
+      
+      // Configurar formulario de registro de surtido
+      function setupProduccionForm() {
+        const submitBtn = document.getElementById('submitSurtidoBtn');
+        const timerStartBtn = document.getElementById('timerStartBtn');
+        const timerStopBtn = document.getElementById('timerStopBtn');
+        const timerDisplay = document.getElementById('timerDisplay');
+        
+        if (submitBtn) {
+          submitBtn.addEventListener('click', function() {
+            const modelSelect = document.getElementById('modelSelect');
+            const selectedModel = modelSelect.value;
+            
+            if (!selectedModel) {
+              showToast('error', 'Campo requerido', 'Debe seleccionar un modelo.');
+              return;
+            }
+            
+            // Verificar si el modelo está en el plan (simulación)
+            const offPlanModels = ['MX-503-7654B', 'MX-715-3890E'];
+            if (offPlanModels.includes(selectedModel)) {
+              // Mostrar modal de alerta
+              document.getElementById('alertModelName').textContent = modelSelect.options[modelSelect.selectedIndex].text;
+              modals.offPlanAlertModal.modal.classList.remove('hidden');
+            } else {
+              // Procesar el formulario normalmente
+              showToast('success', 'Surtido registrado', 'El registro de surtido ha sido guardado correctamente.');
+              document.getElementById('surtidoForm').reset();
+              stopTimer();
+            }
+          });
+        }
+        
+        // Timer functionality
+        if (timerStartBtn && timerStopBtn && timerDisplay) {
+          timerStartBtn.addEventListener('click', function() {
+            startTimer();
+          });
+          
+          timerStopBtn.addEventListener('click', function() {
+            stopTimer();
+            // Actualizar el campo duración con el tiempo transcurrido
+            const duration = Math.round((Date.now() - timerStartTime) / 1000);
+            document.getElementById('duration').value = duration;
+          });
+        }
+      }
+      
+      // Funciones de cronómetro
+      function startTimer() {
+        if (timerInterval !== null) return;
+        
+        timerStartTime = Date.now();
+        document.getElementById('timerStartBtn').disabled = true;
+        document.getElementById('timerStopBtn').disabled = false;
+        
+        timerInterval = setInterval(updateTimerDisplay, 100);
+      }
+      
+      function stopTimer() {
+        if (timerInterval === null) return;
+        
+        clearInterval(timerInterval);
+        timerInterval = null;
+        document.getElementById('timerStartBtn').disabled = false;
+        document.getElementById('timerStopBtn').disabled = true;
+      }
+      
+      function updateTimerDisplay() {
+        const elapsedMs = Date.now() - timerStartTime;
+        const seconds = Math.floor(elapsedMs / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const tenths = Math.floor((elapsedMs % 1000) / 100);
+        
+        const displayMinutes = minutes.toString().padStart(2, '0');
+        const displaySeconds = (seconds % 60).toString().padStart(2, '0');
+        
+        document.getElementById('timerDisplay').textContent = `${displayMinutes}:${displaySeconds}.${tenths}`;
+      }
+      
+      // Configurar botones de toggle
+      function setupToggleButtons() {
+        const toggleButtons = document.querySelectorAll('.toggle-button');
+        
+        toggleButtons.forEach(button => {
+          button.addEventListener('click', function() {
+            this.classList.toggle('active');
+          });
+        });
+      }
+      
+      // Función para mostrar toast notifications
+      function showToast(type, title, message) {
+        const id = 'toast-' + Date.now();
+        const iconClass = type === 'success' ? 'fa-check-circle' : 
+                          type === 'error' ? 'fa-exclamation-circle' : 
+                          type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+        
+        const bgClass = type === 'success' ? 'bg-green-100 text-green-800' : 
+                        type === 'error' ? 'bg-red-100 text-red-800' : 
+                        type === 'warning' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800';
+        
+        const toastHtml = `
+          <div id="${id}" class="toast fade-in ${bgClass}">
+            <div class="toast-header py-2 px-3 flex justify-between items-center">
+              <div class="flex items-center">
+                <i class="fas ${iconClass} mr-2"></i>
+                <strong>${title}</strong>
+              </div>
+              <button class="toast-close text-gray-600 hover:text-gray-800">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="toast-body py-3 px-3 border-t border-gray-200">
+              ${message}
+            </div>
+          </div>
+        `;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+        
+        const toastElement = document.getElementById(id);
+        const closeButton = toastElement.querySelector('.toast-close');
+        
+        closeButton.addEventListener('click', function() {
+          toastElement.remove();
+        });
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+          if (toastElement.parentNode === toastContainer) {
+            toastElement.remove();
+          }
+        }, 5000);
+      }
+      
+      // Simular API para uso futuro
+      function apiMock(endpoint, method, data = null) {
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            resolve({
+              success: true,
+              message: "This is a prototype, continue building to see the full version."
+            });
+          }, 500);
+        });
+      }
+    });
+  </script>
+</body>
+</html>
