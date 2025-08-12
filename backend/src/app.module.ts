@@ -12,20 +12,12 @@ import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
-    // Carga variables de entorno (global). En producción tomará process.env (Railway).
-    // Si quieres usar archivo local en dev, puedes crear .env y se cargará automáticamente.
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
-
-    // TypeORM con factory que lee DATABASE_URL (y hace fallback si lo programaste)
+    ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: typeormFactory, // <-- tu ./config/typeorm.config export default
+      useFactory: typeormFactory,
     }),
-
-    // Módulos de la app
     AuthModule,
     UsersModule,
     ModelsModule,
