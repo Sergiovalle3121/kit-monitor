@@ -1,30 +1,22 @@
-import './preload'; // <-- ¡Debe ir primero!
-
 import { NestFactory } from '@nestjs/core';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Swagger
-  const config = new DocumentBuilder()
-    .setTitle('Kit Monitor API')
-    .setDescription('Corporate monitoring system')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  const port = parseInt(process.env.PORT ?? '3000', 10);
+  const url = process.env.DATABASE_URL;
 
-  // Global pipes and filters
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-  app.useGlobalFilters(new HttpExceptionFilter());
+  if (!url) throw new Error('DATABASE_URL is not set');
 
-  const port = Number(process.env.PORT) || 3000;
+  try {
+    const u = new URL(url);
+    console.log(`[DB] host=${u.hostname} db=${u.pathname.slice(1)}`);
+  } catch {
+    console.warn('[DB] DATABASE_URL invalid format');
+  }
+
   await app.listen(port, '0.0.0.0');
-  console.log(`✅ Server running on port ${port}`);
+  console.log(`[HTTP] listening on 0.0.0.0:${port}`);
 }
 bootstrap();
