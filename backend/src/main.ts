@@ -1,3 +1,5 @@
+import './preload'; // <-- ¡Debe ir primero!
+
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
@@ -6,9 +8,6 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
-  // (Opcional) CORS si el frontend consumirá al backend
-  // app.enableCors();
 
   // Swagger
   const config = new DocumentBuilder()
@@ -26,5 +25,6 @@ async function bootstrap() {
 
   const port = Number(process.env.PORT) || 3000;
   await app.listen(port, '0.0.0.0');
+  console.log(`✅ Server running on port ${port}`);
 }
 bootstrap();
