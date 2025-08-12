@@ -1,34 +1,20 @@
-import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
+import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
-export default (configService: ConfigService): TypeOrmModuleOptions => {
-  const isProd = configService.get<string>('NODE_ENV') === 'production';
+export default function typeormFactory(config: ConfigService): TypeOrmModuleOptions {
+  const url = process.env.DATABASE_URL || config.get<string>('DATABASE_URL');
 
-  // Si está definida, usamos DATABASE_URL; si no, usamos los DB_* por separado
-  const databaseUrl = configService.get<string>('DATABASE_URL');
-
-  const common = {
-    type: 'postgres' as const,
-    autoLoadEntities: true,
-    synchronize: configService.get<boolean>('DB_SYNC', false), // en prod: false
-    logging: configService.get<boolean>('DB_LOGGING', false),
-    ssl: isProd ? { rejectUnauthorized: false } : false,
-  };
-
-  if (databaseUrl) {
-    return {
-      ...common,
-      url: databaseUrl, // <-- Solo incluimos url si existe; si no, ni la mandamos
-    };
+  if (!url) {
+    // Falla temprano y con mensaje claro en Railway
+    throw new Error('DATABASE_URL is not set. Define it in Railway → Variables.');
   }
 
   return {
-    ...common,
-    host: configService.get<string>('DB_HOST', 'localhost'),
-    port: Number(configService.get<string>('DB_PORT', '5432')),
-    username: configService.get<string>('DB_USERNAME', 'postgres'),
-    password: configService.get<string>('DB_PASSWORD', 'postgres'),
-    database: configService.get<string>('DB_DATABASE', 'kitmonitor'),
+    type: 'postgres',
+    url,
+    autoLoadEntities: true,
+    synchronize: false, // true solo en dev
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    // logging: true, // opcional
   };
-};
-
+}
