@@ -7,13 +7,41 @@ COPY . .
 ENV NODE_OPTIONS=--max_old_space_size=2048
 RUN npm run build -- --configuration=production
 
-# -------- Serve estático con http-server --------
+# -------- Runtime: Node static server --------
 FROM node:22.12.0-alpine
 WORKDIR /app
-RUN npm i -g http-server
+# Traemos TODA la carpeta dist (Angular deja en dist/frontend o dist/frontend/browser)
 COPY --from=build /app/dist /app/dist
+
+# Creamos un servidor estático minimalista (sin dependencias)
+# Elige automáticamente dist/frontend/browser -> dist/frontend -> dist
+RUN printf '%s\n' \
+'import { createServer } from "http";' \
+'import fs from "fs";' \
+'import { readFile, stat } from "fs/promises";' \
+'import path from "path";' \
+'import { fileURLToPath } from "url";' \
+'const __dirname = path.dirname(fileURLToPath(import.meta.url));' \
+'const candidates = ["dist/frontend/browser","dist/frontend","dist"];' \
+'let base = "";' \
+'for (const d of candidates){ const p=path.join(__dirname,d); if (fs.existsSync(p)){ base=p; break; } }' \
+'if (!base){ console.error("ERROR: no dist folder found"); process.exit(1); }' \
+'const port = parseInt(process.env.PORT||"8080",10);' \
+'const server = createServer(async (req,res)=>{' \
+'  try {' \
+'    let reqPath = decodeURIComponent((req.url||"/").split("?")[0]);' \
+'    if (reqPath === "/" || reqPath === "") reqPath = "/index.html";' \
+'    let filePath = path.join(base, reqPath);' \
+'    if (!filePath.startsWith(base)){ res.statusCode=403; return res.end("Forbidden"); }' \
+'    try { await stat(filePath); } catch { filePath = path.join(base, "index.html"); }' \
+'    const ext = path.extname(filePath).toLowerCase();' \
+'    const types = {".html":"text/html",".js":"application/javascript",".css":"text/css",".json":"application/json",".ico":"image/x-icon",".png":"image/png",".jpg":"image/jpeg",".jpeg":"image/jpeg",".svg":"image/svg+xml",".webp":"image/webp"};' \
+'    res.setHeader("Content-Type", types[ext]||"application/octet-stream");' \
+'    res.end(await readFile(filePath));' \
+'  } catch(e){ res.statusCode=500; res.end(String(e)); }' \
+'});' \
+'server.listen(port,"0.0.0.0",()=>console.log(`Static server on http://0.0.0.0:${port} (base=${base})`));' \
+> server.mjs
+
 EXPOSE 8080
-CMD ["sh","-lc","p=${PORT:-8080}; \
-for d in dist/frontend/browser dist/frontend dist; do \
-  if [ -d \"$d\" ]; then echo \"Serving $d on 0.0.0.0:$p\"; exec http-server \"$d\" -p $p -a 0.0.0.0 --cors -c-1; fi; \
-done; echo 'ERROR: no dist folder'; find dist -maxdepth 2 -type d -print; exit 1"]
+CMD ["node","server.mjs"]
