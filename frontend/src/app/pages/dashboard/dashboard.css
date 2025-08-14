@@ -1,0 +1,4 @@
+:host { display:block; padding:16px; }
+mat-card { padding:16px; }
+table { border-spacing: 0; }
+th, td { padding: 8px 6px; }
