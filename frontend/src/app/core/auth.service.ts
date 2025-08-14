@@ -1,18 +1,27 @@
 import { Injectable } from '@angular/core';
-import { ApiService } from './api.service';
-import { tap, map } from 'rxjs/operators';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
-export class AuthService {
-  private tokenKey = 'access_token';
-  constructor(private api: ApiService) {}
+export class ApiService {
+  private readonly base = environment.apiUrl; // https://kit-monitor-production.up.railway.app
 
-  login(email: string, password: string): Observable<void> {
-    return this.api.post<{ access_token: string }>('/auth/login', { email, password })
-      .pipe(tap(res => localStorage.setItem(this.tokenKey, res.access_token)), map(() => void 0));
+  constructor(private http: HttpClient) {}
+
+  get<T>(path: string, params?: HttpParams, headers?: HttpHeaders): Observable<T> {
+    return this.http.get<T>(`${this.base}${path}`, { params, headers });
   }
-  logout() { localStorage.removeItem(this.tokenKey); }
-  getToken() { return localStorage.getItem(this.tokenKey); }
-  isLoggedIn() { return !!this.getToken(); }
+
+  post<T>(path: string, body?: unknown, headers?: HttpHeaders): Observable<T> {
+    return this.http.post<T>(`${this.base}${path}`, body, { headers });
+  }
+
+  put<T>(path: string, body?: unknown, headers?: HttpHeaders): Observable<T> {
+    return this.http.put<T>(`${this.base}${path}`, body, { headers });
+  }
+
+  delete<T>(path: string, params?: HttpParams, headers?: HttpHeaders): Observable<T> {
+    return this.http.delete<T>(`${this.base}${path}`, { params, headers });
+  }
 }
