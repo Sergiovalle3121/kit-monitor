@@ -14,7 +14,8 @@ RUN npm i -g serve
 COPY --from=build /app/dist /app/dist
 # No fijamos PORT aquí; Railway lo inyecta
 EXPOSE 8080
-CMD ["sh","-lc","PORT=${PORT:-8080}; \
+CMD ["sh","-lc","p=${PORT:-8080}; \
 for d in dist/frontend/browser dist/frontend dist; do \
-  if [ -d \"$d\" ]; then echo \"Serving $d on $PORT (dir: $d)\"; exec serve -s \"$d\" -l \"$PORT\"; fi; \
-done; echo 'ERROR: no dist folder' && ls -la dist || true && exit 1"]
+  if [ -d \"$d\" ]; then echo \"Serving $d on tcp://0.0.0.0:$p\"; \
+  exec serve -s \"$d\" --listen tcp://0.0.0.0:$p; fi; \
+done; echo 'ERROR: no dist folder'; find dist -maxdepth 2 -type d -print; exit 1"]
