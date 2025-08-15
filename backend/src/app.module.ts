@@ -1,28 +1,18 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import typeormFactory from './config/typeorm.config';
-import { AuthModule } from './modules/auth/auth.module';
-import { UsersModule } from './modules/users/users.module';
-import { ModelsModule } from './modules/models/models.module';
-import { KitsModule } from './modules/kits/kits.module';
-import { ReportsModule } from './modules/reports/reports.module';
-import { HealthController } from './health.controller';
+﻿import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { ormOptions } from "./orm.options";
+import { HealthController } from "./health/health.controller";
+
+// Habilita DB si tienes envs: DATABASE_URL o DB_HOST
+const enableDb =
+  (process.env.DATABASE_URL && process.env.DATABASE_URL.length > 0) ||
+  (process.env.DB_HOST && process.env.DB_HOST.length > 0);
+
+const dbImports = enableDb ? [TypeOrmModule.forRoot(ormOptions())] : [];
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: typeormFactory,
-    }),
-    AuthModule,
-    UsersModule,
-    ModelsModule,
-    KitsModule,
-    ReportsModule,
-  ],
+  imports: [...dbImports],
   controllers: [HealthController],
+  providers: [],
 })
 export class AppModule {}

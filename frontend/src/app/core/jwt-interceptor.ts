@@ -1,16 +1,20 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+﻿import { HttpInterceptorFn } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  const token = (typeof localStorage !== "undefined") ? localStorage.getItem("token") : null;
 
-  const absoluteUrl = req.url.startsWith('http')
+  const url = req.url.startsWith("http")
     ? req.url
-    : `${environment.apiUrl}${req.url.startsWith('/') ? '' : '/'}${req.url}`;
+    : `${environment.apiUrl}${req.url.startsWith("/") ? "" : "/"}${req.url}`;
 
-  const authReq = token
-    ? req.clone({ url: absoluteUrl, setHeaders: { Authorization: `Bearer ${token}` } })
-    : req.clone({ url: absoluteUrl });
+  let clone = req.clone({ url });
 
-  return next(authReq);
-}
+  if (token) {
+    clone = clone.clone({
+      setHeaders: { Authorization: `Bearer ${token}` }
+    });
+  }
+
+  return next(clone);
+};

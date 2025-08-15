@@ -1,4 +1,5 @@
-export const environment = {
+﻿export const environment = {
   production: false,
-  apiUrl: 'https://kit-monitor-production.up.railway.app'
+  apiBase: 'http://localhost:3000',
+  apiUrl: 'http://localhost:3000'
 };

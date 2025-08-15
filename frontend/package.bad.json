@@ -1,14 +1,30 @@
 {
   "name": "kit-monitor-frontend",
   "version": "1.0.0",
-  "private": true,
   "scripts": {
-    "build": "ng build --configuration production",
+    "ng": "ng",
     "start": "node server.js",
+    "build": "ng build --configuration production",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "serve:dev": "ng serve",
     "postinstall": "npm run build"
   },
+  "prettier": {
+    "overrides": [
+      {
+        "files": "*.html",
+        "options": {
+          "parser": "angular"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "private": true,
   "engines": {
-    "node": ">=18"
+    "node": ">=20.19.0 <21"
   },
   "dependencies": {
     "@angular/animations": "^20.1.4",
@@ -20,7 +36,7 @@
     "@angular/material": "^20.1.4",
     "@angular/platform-browser": "^20.1.0",
     "@angular/router": "^20.1.0",
-    "express": "^4.21.2",
+    "express": "^4.19.2",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
@@ -37,4 +53,3 @@
     "karma-jasmine-html-reporter": "~2.1.0",
     "typescript": "~5.8.2"
   }
-}
