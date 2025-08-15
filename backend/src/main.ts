@@ -37,6 +37,7 @@ async function bootstrap() {
   }
 
   const port = parseInt(process.env.PORT ?? '3000', 10);
+  app.setGlobalPrefix('api');
   await app.listen(port, '0.0.0.0');
   console.log(`API listening on :${port} (NODE_ENV=${env}) allowedOrigin=${allowedOrigin}`);
 }
