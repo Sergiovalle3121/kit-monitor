@@ -1,56 +1,118 @@
-﻿# setup-kit-monitor.ps1
-# Ejecutar desde la raíz del repo: kit-monitor/
-# Requiere: PowerShell 5+ y Node/npm instalados.
+<#  setup-kit-monitor.ps1
+    Ejecuta este script desde la raíz del repo (la carpeta que contiene /backend y /frontend).
+    Hace TODO: CORS, /api, proxy en frontend, Dockerfiles, env examples, etc.
 
-Set-StrictMode -Version Latest
-Continue = 'Stop'
+    --- CONFIG EDITABLE ---
+#>
+$FrontendDomain   = "https://your-frontend.up.railway.app"  # dominio público final del FRONTEND en Railway
+$BackendPublicUrl = "https://your-backend.up.railway.app"   # dominio público del BACKEND en Railway (para proxy del server.js)
+$SharedKey        = "change-me-strong-key"                  # debe ser igual en frontend y backend
 
-function Ensure-Folder() { if (-not (Test-Path )) { New-Item -ItemType Directory -Force -Path  | Out-Null } }
+# --- No edites de aquí hacia abajo ---
+$ErrorActionPreference = "Stop"
 
-# Verifica estructura
-if (-not (Test-Path ".\backend"))  { throw "No se encontró carpeta .\backend. Ejecuta este script desde la raíz del proyecto (kit-monitor)." }
-if (-not (Test-Path ".\frontend")) { throw "No se encontró carpeta .\frontend. Ejecuta este script desde la raíz del proyecto (kit-monitor)." }
+function Ensure-Dir($p){
+  if(-not (Test-Path $p)){ New-Item -ItemType Directory -Force -Path $p | Out-Null }
+}
 
-Write-Host "==> Configurando BACKEND (NestJS)..." -ForegroundColor Cyan
+function Write-Text($path,$content){
+  Ensure-Dir (Split-Path $path -Parent)
+  if(Test-Path $path){ Copy-Item $path "$($path).bak" -Force }
+  Set-Content -Path $path -Value $content -Encoding UTF8
+}
 
-# -------------------------
-# BACKEND: main.ts
-# -------------------------
- = ".\backend\src"
-Ensure-Folder 
- = Join-Path  "main.ts"
+function Replace-Regex($path,$pattern,$replace){
+  if(-not (Test-Path $path)){ return }
+  $txt = Get-Content $path -Raw
+  $new = [regex]::Replace($txt,$pattern,$replace)
+  if($new -ne $txt){
+    Copy-Item $path "$($path).bak" -Force
+    Set-Content $path $new -Encoding UTF8
+  }
+}
 
-@'
+function Add-NpmDep($packageJsonPath,$name,$version){
+  $pkg = Get-Content $packageJsonPath -Raw | ConvertFrom-Json
+
+  if(-not $pkg.dependencies){
+    $pkg | Add-Member -NotePropertyName dependencies -NotePropertyValue ([pscustomobject]@{})
+  }
+
+  # Convertir dependencies a hashtable (soporta claves con guiones)
+  $depsHash = @{}
+  foreach($p in $pkg.dependencies.PSObject.Properties){
+    $depsHash[$p.Name] = $p.Value
+  }
+
+  $depsHash[$name] = $version
+  $pkg.dependencies = [pscustomobject]$depsHash
+  ($pkg | ConvertTo-Json -Depth 100) | Set-Content $packageJsonPath -Encoding UTF8
+}
+
+$root     = (Get-Location).Path
+$backend  = Join-Path $root "backend"
+$frontend = Join-Path $root "frontend"
+
+if(-not (Test-Path $backend) -or -not (Test-Path $frontend)){
+  throw "No encuentro carpetas 'backend' y 'frontend' aquí: $root"
+}
+
+# ---------------------------
+# BACKEND (NestJS)
+# ---------------------------
+
+# main.ts con /api, CORS por ALLOWED_ORIGIN, helmet/compression y llave compartida
+$backendMain = @"
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import helmet from 'helmet';
+import compression from 'compression';
+import { Request, Response, NextFunction } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: false });
 
+  app.use(helmet());
+  app.use(compression());
+
+  // API bajo /api
+  app.setGlobalPrefix('api');
+
+  const env = process.env.NODE_ENV || 'development';
+  const allowedOrigin = process.env.ALLOWED_ORIGIN || (env === 'production'
+    ? '$FrontendDomain'
+    : 'http://localhost:8080');
+
   app.enableCors({
-    origin: [
-      'https://mindful-presence-production-1bd7.up.railway.app',
-    ],
+    origin: [allowedOrigin],
     credentials: true,
     methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-    allowedHeaders: ['Content-Type','Authorization'],
+    allowedHeaders: ['Content-Type','Authorization','x-frontend-key'],
   });
+
+  // En prod, exigir header compartido desde el proxy del frontend
+  const sharedKey = process.env.FRONTEND_SHARED_KEY;
+  if (env === 'production' && sharedKey) {
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (req.path === '/api/health') return next(); // health abierto
+      const got = req.header('x-frontend-key');
+      if (got !== sharedKey) return res.status(403).json({ error: 'Forbidden' });
+      return next();
+    });
+  }
 
   const port = parseInt(process.env.PORT ?? '3000', 10);
   await app.listen(port, '0.0.0.0');
-  console.log(API listening on :);
+  console.log(`API listening on :${port} (NODE_ENV=${env}) allowedOrigin=${allowedOrigin}`);
 }
 bootstrap();
-'@ | Set-Content -NoNewline -Encoding UTF8 
+"@
+Write-Text (Join-Path $backend "src\main.ts") $backendMain
 
-# -------------------------
-# BACKEND: Health Controller
-# -------------------------
- = Join-Path  "health"
-Ensure-Folder 
- = Join-Path  "health.controller.ts"
-
-@'
+# HealthController mínimo si no existe
+$healthCtrlPath = Join-Path $backend "src\health\health.controller.ts"
+if(-not (Test-Path $healthCtrlPath)){
+  Write-Text $healthCtrlPath @"
 import { Controller, Get } from '@nestjs/common';
 
 @Controller()
@@ -60,305 +122,201 @@ export class HealthController {
     return { status: 'ok', time: new Date().toISOString() };
   }
 }
-'@ | Set-Content -NoNewline -Encoding UTF8 
+"@
+}
 
-# -------------------------
-# BACKEND: app.module.ts -> inyectar HealthController
-# -------------------------
- = Join-Path  "app.module.ts"
-if (Test-Path ) {
-   = Get-Content -Raw 
-
-  if ( -notmatch 'HealthController') {
-    # Agrega import
-    if ( -match "import\s+\{\s*Module\s*\}\s+from\s+'@nestjs/common';") {
-       =  -replace "(import\s+\{\s*Module\s*\}\s+from\s+'@nestjs/common';\s*)", "$1
-import { HealthController } from './health/health.controller';
-"
-    } elseif ( -match "^import\s") {
-       =  -replace "^(import[^\r\n]*[\r\n]+)", "$1import { HealthController } from './health/health.controller';
-"
-    } else {
-       = "import { HealthController } from './health/health.controller';
-" + 
+# Asegurar app.module importa el HealthController (si existe app.module.ts)
+$appModulePath = Join-Path $backend "src\app.module.ts"
+if(Test-Path $appModulePath){
+  $appTxt = Get-Content $appModulePath -Raw
+  if($appTxt -notmatch "HealthController"){
+    # Inyecta en la lista de controllers
+    $appTxt = $appTxt -replace "(@Module\(\{\s*imports:\s*\[[^\]]*\],\s*controllers:\s*\[)","`$1HealthController, "
+    # Añade import si no existe
+    if($appTxt -notmatch 'from\s+\./health/health\.controller'){
+      $appTxt = "import { HealthController } from './health/health.controller';`r`n" + $appTxt
     }
-
-    # Inserta en metadata @Module
-    if ( -match "@Module\(\{\s*[^)]*\}\)\s*export\s+class\s+AppModule") {
-      if ( -match "controllers\s*:\s*\[([^\]]*)\]") {
-        # Ya hay controllers: agrega HealthController si no existe
-         =  -replace "(controllers\s*:\s*\[)([^\]]*)\]", { 
-          param()
-           = .Groups[2].Value
-          if ( -notmatch "HealthController") {
-            return .Groups[1].Value + .Trim() + (if (.Trim() -eq '') { "HealthController" } else { ", HealthController" }) + "]"
-          } else {
-            return .Value
-          }
-        }
-      } else {
-        # No hay controllers: inserta controllers: [HealthController],
-         =  -replace "(@Module\(\{\s*)", "$1controllers: [HealthController],
-  "
-      }
-    } else {
-      Write-Warning "No se detectó el decorador @Module en app.module.ts; revisa manualmente controllers: [HealthController]."
-    }
-
-     | Set-Content -Encoding UTF8 
+    Set-Content $appModulePath $appTxt -Encoding UTF8
   }
-} else {
-  Write-Warning "No existe backend/src/app.module.ts. Crea tu AppModule y registra HealthController en controllers."
 }
 
-# -------------------------
-# BACKEND: package.json -> scripts y engines
-# -------------------------
- = ".\backend\package.json"
-if (Test-Path ) {
-   = Get-Content -Raw  | ConvertFrom-Json
-} else {
-   = [pscustomobject]@{ name="kit-monitor-backend"; version="1.0.0"; private=True }
+# Backend Dockerfile
+Write-Text (Join-Path $backend "Dockerfile") @"
+# ---- Build ----
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# ---- Run ----
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/package*.json ./
+EXPOSE 3000
+CMD ["node","dist/main.js"]
+"@
+
+# Backend .env.example
+Write-Text (Join-Path $backend ".env.example") @"
+# Backend environment
+NODE_ENV=production
+PORT=3000
+ALLOWED_ORIGIN=$FrontendDomain
+FRONTEND_SHARED_KEY=$SharedKey
+
+# Railway Postgres (reemplaza host/credenciales con los de Railway)
+DATABASE_URL=postgresql://postgres:password@host:5432/railway?sslmode=require
+
+# Dev (opcional):
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_USERNAME=postgres
+# DB_PASSWORD=postgres
+# DB_DATABASE=kitmonitor
+# SYNCHRONIZE=false
+"@
+
+# Asegurar scripts package.json mínimos
+$bpkgPath = Join-Path $backend "package.json"
+if(Test-Path $bpkgPath){
+  $bpkg = Get-Content $bpkgPath -Raw | ConvertFrom-Json
+  if(-not $bpkg.scripts) { $bpkg | Add-Member -NotePropertyName scripts -NotePropertyValue (@{}) }
+  $bpkg.scripts.build = "nest build"
+  if(-not $bpkg.scripts."start:prod"){ $bpkg.scripts | Add-Member -Name "start:prod" -Value "node dist/main.js" -MemberType NoteProperty }
+  ($bpkg | ConvertTo-Json -Depth 100) | Set-Content $bpkgPath -Encoding UTF8
 }
-if (-not .scripts) {  | Add-Member -Name scripts -MemberType NoteProperty -Value (@{}) }
-.scripts.build       = "nest build"
-.scripts.start       = "nest start"
-.scripts."start:prod"= "node dist/main.js"
-.scripts.postinstall = "npm run build"
 
-if (-not .engines) {  | Add-Member -Name engines -MemberType NoteProperty -Value (@{}) }
-.engines.node = ">=18"
+# ---------------------------
+# FRONTEND (Angular + Node/Express server.js)
+# ---------------------------
 
-( | ConvertTo-Json -Depth 20) | Set-Content -Encoding UTF8 
+# environment.prod.ts => apiBaseUrl '/api'
+$envProdPath = Join-Path $frontend "src\environments\environment.prod.ts"
+if(Test-Path $envProdPath){
+  Replace-Regex $envProdPath 'apiBaseUrl\s*:\s*[''"][^''"]+[''"]' "apiBaseUrl: '/api'"
+  $txt = Get-Content $envProdPath -Raw
+  if($txt -notmatch "apiBaseUrl"){
+    $txt = $txt -replace "\}\s*;?\s*$", ", apiBaseUrl: '/api' };"
+    Set-Content $envProdPath $txt -Encoding UTF8
+  }
+}else{
+  Write-Text $envProdPath "export const environment = { production: true, apiBaseUrl: '/api' };"
+}
 
-Write-Host "==> Configurando FRONTEND (Angular)..." -ForegroundColor Cyan
-
-# -------------------------
-# FRONTEND: server.js (sirve dist con fallback)
-# -------------------------
- = ".\frontend"
- = Join-Path  "server.js"
-
-@'
+# server.js -> añade proxy /api → BACKEND_URL + header x-frontend-key
+$serverJs = Join-Path $frontend "server.js"
+if(Test-Path $serverJs){
+  $srv = Get-Content $serverJs -Raw
+}else{
+  $srv = @"
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const app = express();
-
-// Intento autodetectar carpeta dist:
 const candidates = [
   path.join(__dirname, 'dist', 'frontend', 'browser'),
   path.join(__dirname, 'dist', 'kit-monitor', 'browser')
 ];
 const distPath = candidates.find(p => fs.existsSync(p)) || candidates[0];
-
 app.use(express.static(distPath));
-
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
-});
-
+app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
 const port = process.env.PORT || 8080;
-app.listen(port, '0.0.0.0', () => console.log(Frontend listening on : -> ));
-'@ | Set-Content -NoNewline -Encoding UTF8 
-
-# -------------------------
-# FRONTEND: package.json -> scripts, engines, deps (express)
-# -------------------------
- = ".\frontend\package.json"
-if (Test-Path ) {
-   = Get-Content -Raw  | ConvertFrom-Json
-} else {
-   = [pscustomobject]@{ name="kit-monitor-frontend"; version="1.0.0"; private=True }
+app.listen(port, '0.0.0.0', () => console.log(`Frontend listening on :${port} -> ${distPath}`));
+"@
 }
 
-if (-not .scripts) {  | Add-Member -Name scripts -MemberType NoteProperty -Value (@{}) }
-.scripts.build       = "ng build --configuration production"
-.scripts.start       = "node server.js"
-.scripts.postinstall = "npm run build"
+if($srv -notmatch "http-proxy-middleware"){
+  $proxyBlock = @"
+const { createProxyMiddleware } = require('http-proxy-middleware');
+const backendTarget = process.env.BACKEND_URL || '$BackendPublicUrl';
+const sharedKey = process.env.FRONTEND_SHARED_KEY || '$SharedKey';
 
-if (-not .engines) {  | Add-Member -Name engines -MemberType NoteProperty -Value (@{}) }
-.engines.node = ">=18"
-
-if (-not .dependencies) {  | Add-Member -Name dependencies -MemberType NoteProperty -Value (@{}) }
-if (-not .dependencies.express) { .dependencies.express = "^4.19.2" }
-
-( | ConvertTo-Json -Depth 20) | Set-Content -Encoding UTF8 
-
-# -------------------------
-# FRONTEND: environments
-# -------------------------
- = ".\frontend\src\environments"
-Ensure-Folder 
-
-@'
-export const environment = {
-  production: false,
-  apiBase: 'http://localhost:3000'
-};
-'@ | Set-Content -NoNewline -Encoding UTF8 (Join-Path  "environment.ts")
-
-@'
-export const environment = {
-  production: true,
-  apiBase: 'https://kit-monitor-production.up.railway.app'
-};
-'@ | Set-Content -NoNewline -Encoding UTF8 (Join-Path  "environment.prod.ts")
-
-# -------------------------
-# FRONTEND: interceptor
-# -------------------------
- = ".\frontend\src\app\core"
-Ensure-Folder 
- = Join-Path  "api.interceptor.ts"
-@'
-import { Injectable } from '@angular/core';
-import { HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
-
-@Injectable()
-export class ApiBaseInterceptor implements HttpInterceptor {
-  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    if (req.url.startsWith('/')) {
-      const apiReq = req.clone({ url: environment.apiBase + req.url });
-      return next.handle(apiReq);
+if (backendTarget) {
+  app.use('/api', createProxyMiddleware({
+    target: backendTarget,
+    changeOrigin: true,
+    pathRewrite: {'^/api': '/api'},
+    onProxyReq: (proxyReq) => {
+      if (sharedKey) proxyReq.setHeader('x-frontend-key', sharedKey);
     }
-    return next.handle(req);
-  }
+  }));
 }
-'@ | Set-Content -NoNewline -Encoding UTF8 
-
-# -------------------------
-# FRONTEND: registrar interceptor (mejor esfuerzo)
-# - Si existe AppModule => agrega HttpClientModule y provider
-# - Si no, intenta standalone en main.ts (provideHttpClient)
-# -------------------------
- = ".\frontend\src\app\app.module.ts"
-      = ".\frontend\src\main.ts"
-
-function Add-Provider-To-AppModule {
-  param([string])
-   = Get-Content -Raw 
-
-  if ( -notmatch "HttpClientModule") {
-     =  -replace "(@NgModule\(\{)", "import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
-"
-  } elseif ( -notmatch "HTTP_INTERCEPTORS") {
-     =  -replace "import\s+\{\s*HttpClientModule\s*\}\s+from\s+'@angular/common/http';", "import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';"
-  }
-
-  if ( -notmatch "ApiBaseInterceptor") {
-     =  -replace "(@NgModule\(\{)", "import { ApiBaseInterceptor } from './core/api.interceptor';
-"
-  }
-
-  # Agrega HttpClientModule en imports:
-  if ( -match "imports\s*:\s*\[([^\]]*)\]") {
-     =  -replace "(imports\s*:\s*\[)([^\]]*)\]", { 
-      param()
-       = .Groups[2].Value
-      if ( -notmatch "HttpClientModule") {
-        return .Groups[1].Value + .Trim() + (if (.Trim() -eq '') { "HttpClientModule" } else { ", HttpClientModule" }) + "]"
-      } else { .Value }
-    }
-  }
-
-  # Agrega provider del interceptor:
-  if ( -match "providers\s*:\s*\[([^\]]*)\]") {
-     =  -replace "(providers\s*:\s*\[)([^\]]*)\]", {
-      param()
-       = .Groups[2].Value
-      if ( -notmatch "HTTP_INTERCEPTORS") {
-         = "{ provide: HTTP_INTERCEPTORS, useClass: ApiBaseInterceptor, multi: true }"
-        return .Groups[1].Value + .Trim() + (if (.Trim() -eq '') {  } else { ", " }) + "]"
-      } else { .Value }
-    }
-  } else {
-    # No había providers: crear sección
-     =  -replace "(@NgModule\(\{\s*)", "$1providers: [{ provide: HTTP_INTERCEPTORS, useClass: ApiBaseInterceptor, multi: true }],
-  "
-  }
-
-   | Set-Content -Encoding UTF8 
+"@
+  $srv = $srv -replace "app.use\(express\.static\(distPath\)\);\s*", "app.use(express.static(distPath));`r`n$proxyBlock`r`n"
 }
+Write-Text $serverJs $srv
 
-function Add-Interceptor-Standalone {
-  param([string])
-   = Get-Content -Raw 
+# Añadir dependencia http-proxy-middleware al frontend
+$fpkgPath = Join-Path $frontend "package.json"
+if(Test-Path $fpkgPath){ Add-NpmDep $fpkgPath "http-proxy-middleware" "^3.0.0" }
 
-  if ( -notmatch "provideHttpClient") {
-    if ( -match "from\s+'@angular/common';") {
-       =  -replace "from\s+'@angular/common';", "from '@angular/common';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';"
-    } else {
-       = "import { provideHttpClient, withInterceptors } from '@angular/common/http';
-" + 
-    }
-  } elseif ( -notmatch "withInterceptors") {
-     =  -replace "provideHttpClient", "provideHttpClient, withInterceptors"
-  }
+# Frontend Dockerfile
+Write-Text (Join-Path $frontend "Dockerfile") @"
+# ---- Build ----
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
 
-  if ( -notmatch "ApiBaseInterceptor") {
-     =  -replace "from\s+'@angular/core';", "from '@angular/core';
-import { ApiBaseInterceptor } from './app/core/api.interceptor';"
-  }
+# ---- Run ----
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /app/package*.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/server.js ./server.js
+ENV PORT=8080
+EXPOSE 8080
+CMD ["node","server.js"]
+"@
 
-  if ( -match "bootstrapApplication\([^\)]*,\s*\{\s*providers\s*:\s*\[([^\]]*)\]") {
-     =  -replace "(bootstrapApplication\([^\)]*,\s*\{\s*providers\s*:\s*\[)([^\]]*)\]", {
-      param()
-       = .Groups[2].Value
-      if ( -notmatch "provideHttpClient") {
-        return .Groups[1].Value + .Trim() + (if (.Trim() -eq '') { "provideHttpClient(withInterceptors([(req, next) => new ApiBaseInterceptor().intercept(req, next)]))" } else { ", provideHttpClient(withInterceptors([(req, next) => new ApiBaseInterceptor().intercept(req, next)]))" }) + "]"
-      } elseif ( -notmatch "withInterceptors") {
-        return .Groups[1].Value + .Trim() + ", withInterceptors([(req, next) => new ApiBaseInterceptor().intercept(req, next)])]"
-      } else {
-        return .Value
-      }
-    }
-  } elseif ( -match "bootstrapApplication\(") {
-     =  -replace "bootstrapApplication\(\s*([^\s,]+)\s*\)", "bootstrapApplication(, { providers: [ provideHttpClient(withInterceptors([(req, next) => new ApiBaseInterceptor().intercept(req, next)])) ] })"
-  }
+# Frontend .env.example
+Write-Text (Join-Path $frontend ".env.example") @"
+# Frontend runtime (Railway)
+PORT=8080
+BACKEND_URL=$BackendPublicUrl
+FRONTEND_SHARED_KEY=$SharedKey
+"@
 
-   | Set-Content -Encoding UTF8 
-}
+# ---------------------------
+# README de despliegue
+# ---------------------------
+Write-Text (Join-Path $root "README-DEPLOY.md") @"
+# kit-monitor — Despliegue Railway
 
-if (Test-Path ) {
-  try { Add-Provider-To-AppModule -file ; Write-Host "Interceptor registrado en AppModule." -ForegroundColor Green } catch { Write-Warning "No se pudo editar app.module.ts automáticamente. Revisa providers e imports." }
-} elseif (Test-Path ) {
-  try { Add-Interceptor-Standalone -file ; Write-Host "Interceptor registrado en main.ts (standalone)." -ForegroundColor Green } catch { Write-Warning "No se pudo editar main.ts automáticamente. Registra provideHttpClient(withInterceptors(...))." }
-} else {
-  Write-Warning "No se encontró ni app.module.ts ni main.ts para registrar el interceptor."
-}
+## Servicios
+- **Backend (NestJS)** carpeta \`backend\`. Health: \`/api/health\`.
+- **Frontend (Angular+Node)** carpeta \`frontend\`. Sirve SPA y **proxy** \`/api\` → backend.
+- **PostgreSQL** de Railway.
 
-# -------------------------
-# (Opcional) npm install locales para verificar que todo compila
-# -------------------------
-Write-Host "==> Instalando dependencias mínimas..." -ForegroundColor Cyan
-try {
-  pushd .\backend
-  if (Test-Path package.json) { npm install | Out-Null } else { Write-Warning "backend/package.json no existe; omito npm install en backend." }
-  popd
+## Variables de Entorno
+### Backend
+- NODE_ENV=production
+- PORT (asignado por Railway)
+- ALLOWED_ORIGIN=$FrontendDomain
+- FRONTEND_SHARED_KEY=$SharedKey
+- DATABASE_URL (de Postgres Railway, con \`sslmode=require\`)
 
-  pushd .\frontend
-  if (Test-Path package.json) {
-    npm install express --save | Out-Null
-    npm install | Out-Null
-  } else { Write-Warning "frontend/package.json no existe; omito npm install en frontend." }
-  popd
-} catch {
-  Write-Warning "npm install tuvo advertencias/errores. Puedes correrlo manualmente después."
-}
+### Frontend
+- PORT (asignado por Railway)
+- BACKEND_URL=$BackendPublicUrl
+- FRONTEND_SHARED_KEY=$SharedKey
 
-Write-Host "
-✅ Listo. Revisa:" -ForegroundColor Cyan
-Write-Host "1) BACKEND local: cd backend; npm run start (o build + start:prod). Endpoint de salud: http://localhost:3000/health"
-Write-Host "2) FRONTEND local: cd frontend; npm run build; npm start (sirve dist en http://localhost:8080)"
-Write-Host "
-Para Railway configura por servicio:" -ForegroundColor Yellow
-Write-Host "- Backend -> Root Directory: backend | Start Command: npm run start:prod | NODE_ENV=production"
-Write-Host "- Frontend -> Root Directory: frontend | Start Command: npm start       | NODE_ENV=production"
-Write-Host "
-En producción valida:" -ForegroundColor Yellow
-Write-Host "- https://kit-monitor-production.up.railway.app/health  (debe responder JSON)"
-Write-Host "- https://mindful-presence-production-1bd7.up.railway.app/  (debe cargar la SPA)"
+## Check
+- \`GET https://<frontend>/api/health\` → 200 (via proxy).
+- Rutas SPA OK; sin CORS.
+"@
+
+Write-Host "`n✅ Cambios aplicados. Revisa backups *.bak si quieres comparar."
+Write-Host "Opcional en local:"
+Write-Host "  cd backend  && npm ci && npm run build"
+Write-Host "  cd ../frontend && npm ci && npm run build"
+Write-Host "`nLuego haz commit & push a GitHub; crea 2 servicios en Railway usando los Dockerfiles."
