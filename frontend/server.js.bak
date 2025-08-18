@@ -1,0 +1,31 @@
+﻿const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const app = express();
+
+const candidates = [
+  path.join(__dirname, 'dist', 'frontend', 'browser'),
+  path.join(__dirname, 'dist', 'kit-monitor', 'browser')
+];
+const distPath = candidates.find(p => fs.existsSync(p)) || candidates[0];
+
+app.use(express.static(distPath));
+const { createProxyMiddleware } = require('http-proxy-middleware');
+const backendTarget = process.env.BACKEND_URL || 'https://your-backend.up.railway.app';
+const sharedKey = process.env.FRONTEND_SHARED_KEY || 'change-me-strong-key';
+
+if (backendTarget) {
+  app.use('/api', createProxyMiddleware({
+    target: backendTarget,
+    changeOrigin: true,
+    pathRewrite: {'^/api': '/api'},
+    onProxyReq: (proxyReq) => {
+      if (sharedKey) proxyReq.setHeader('x-frontend-key', sharedKey);
+    }
+  }));
+}
+app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
+
+const port = process.env.PORT || 8080;
+app.listen(port, '0.0.0.0', () => console.log(`Frontend listening on :${port} -> ${distPath}`));
+
