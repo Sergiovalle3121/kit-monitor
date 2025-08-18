@@ -1,0 +1,25 @@
+# --- Root (monorepo) ---
+node_modules/
+dist/
+.tmp/
+.cache/
+coverage/
+
+# Frontend (Angular)
+frontend/.angular/
+frontend/dist/
+frontend/node_modules/
+
+# Backend (NestJS)
+backend/dist/
+backend/node_modules/
+
+# Env / credenciales
+.env
+.env.*
+*.local
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+.vscode/
