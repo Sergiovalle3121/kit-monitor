@@ -2,12 +2,11 @@
 FROM node:20 AS build
 WORKDIR /app
 
-# Paquetes para node-gyp (por si alguna lib lo requiere)
+# Instala dependencias del sistema para node-gyp (por si acaso)
 RUN apt-get update && apt-get install -y python3 make g++ git && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
-# usa lock + ignora peer deps + menos ruido
-RUN npm ci --legacy-peer-deps --no-audit --fund=false
+RUN npm install --legacy-peer-deps --no-audit --fund=false
 
 COPY . .
 RUN npm run build
