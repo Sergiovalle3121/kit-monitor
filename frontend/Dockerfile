@@ -1,25 +1,23 @@
-# ---- build ----
-FROM node:20 AS build
+# Imagen base ligera de Node
+FROM node:20-alpine
+
+# Definir directorio de trabajo
 WORKDIR /app
 
-# copiar solo los manifests del frontend (ya estamos en frontend/)
+# Copiar dependencias
 COPY package*.json ./
 
-# instalar dependencias
+# Instalar dependencias (ignora conflictos de peer deps)
 RUN npm install --legacy-peer-deps --no-audit --fund=false
 
-# copiar el resto del frontend
+# Copiar todo el código del frontend
 COPY . .
 
-# construir angular
-RUN npm run build --prod
+# Construir la aplicación Angular
+RUN npm run build
 
-# ---- run ----
-FROM node:20
-WORKDIR /app
-RUN npm i -g serve
-COPY --from=build /app/dist/frontend ./dist/frontend
+# Exponer el puerto de Angular (normalmente 4200 o 80, depende de cómo sirvas)
+EXPOSE 4200
 
-ENV PORT=8080
-EXPOSE 8080
-CMD ["serve", "-s", "dist/frontend", "-l", "8080"]
+# Comando de inicio
+CMD ["npm", "start"]
