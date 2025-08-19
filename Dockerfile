@@ -1,17 +1,15 @@
-# Etapa 1: Build de Angular
+# Build Angular
 FROM node:18 AS build
 WORKDIR /app
 
-# instalar deps del frontend
 COPY frontend/package*.json ./frontend/
 WORKDIR /app/frontend
 RUN npm install --legacy-peer-deps --no-audit --fund=false
 
-# copiar código y compilar
 COPY frontend/ ./
 RUN npm run build -- --configuration production
 
-# Etapa 2: Nginx para estáticos
+# Nginx
 FROM nginx:alpine
 COPY --from=build /app/frontend/dist/frontend /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
