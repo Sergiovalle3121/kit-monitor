@@ -2,14 +2,14 @@
 FROM node:20 AS build
 WORKDIR /app
 
-# copiar solo los manifests del frontend
-COPY frontend/package*.json ./
+# copiar solo los manifests del frontend (ya estamos en frontend/)
+COPY package*.json ./
 
 # instalar dependencias
 RUN npm install --legacy-peer-deps --no-audit --fund=false
 
 # copiar el resto del frontend
-COPY frontend/ ./
+COPY . .
 
 # construir angular
 RUN npm run build --prod
