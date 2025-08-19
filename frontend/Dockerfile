@@ -1,23 +1,13 @@
-# Imagen base ligera de Node
-FROM node:20-alpine
-
-# Definir directorio de trabajo
+# Etapa 1: Compilar Angular
+FROM node:18 AS build
 WORKDIR /app
-
-# Copiar dependencias
 COPY package*.json ./
-
-# Instalar dependencias (ignora conflictos de peer deps)
-RUN npm install --legacy-peer-deps --no-audit --fund=false
-
-# Copiar todo el código del frontend
+RUN npm install --legacy-peer-deps
 COPY . .
+RUN npm run build --prod
 
-# Construir la aplicación Angular
-RUN npm run build
-
-# Exponer el puerto de Angular (normalmente 4200 o 80, depende de cómo sirvas)
-EXPOSE 4200
-
-# Comando de inicio
-CMD ["npm", "start"]
+# Etapa 2: Servir con Nginx
+FROM nginx:alpine
+COPY --from=build /app/dist/kit-monitor /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
