@@ -1,30 +1,23 @@
-# ===== Stage 1: Build =====
+# ===== Stage 1: Build Angular =====
 FROM node:18-alpine AS build
 WORKDIR /app
 
-# Copia solo lo mínimo para cachear deps
-COPY package*.json ./
-RUN npm ci
+# Instalar deps SOLO del frontend
+COPY frontend/package*.json ./frontend/
+RUN cd frontend && npm ci
 
-# Copia el resto del código y construye
-COPY . .
-# Si usas un subfolder "frontend", ajusta el WORKDIR o el comando:
-# WORKDIR /app
-# RUN npx ng build --configuration production
-RUN npx ng build --configuration production
+# Copiar código del frontend y construir
+COPY frontend ./frontend
+RUN cd frontend && npx ng build --configuration production
 
-# ===== Stage 2: Nginx =====
+# ===== Stage 2: Run Nginx =====
 FROM nginx:alpine
 
-# Config Nginx para Angular (SPA)
+# Config SPA Angular
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copia el artefacto de Angular al root de Nginx
-# OJO: usa el nombre exacto de la carpeta que salió en tu build: dist/frontend
-COPY --from=build /app/dist/frontend /usr/share/nginx/html
-
-# (Opcional) Si usas variables por archivo env.js, cópialo también
-# COPY env.js /usr/share/nginx/html/assets/env.js
+# Copiar artefacto generado (dist/frontend)
+COPY --from=build /app/frontend/dist/frontend /usr/share/nginx/html
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
